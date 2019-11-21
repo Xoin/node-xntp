@@ -65,6 +65,6 @@ function handleConnection(conn) {
         console.log('[s] ' + 'Connection %s error: %s', remoteAddress, err.message);
     }
 }
-server.listen(Settings.serveradres, Settings.serverport);
+server.listen(Settings.serverport,Settings.serveradres);
 
 console.log('Server Created at ' + Settings.serveradres + ':' + Settings.serverport + '\n');
