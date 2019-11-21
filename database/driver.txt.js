@@ -1,15 +1,8 @@
 var fs = require('fs');
-function ConverDates(olddate) {
+function ConvertDates(olddate) {
     var a = new Date(olddate);
     var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    var year = a.getFullYear();
-    var month = months[a.getMonth()];
-    var date = a.getDate();
-    var hour = a.getHours();
-    var min = a.getMinutes();
-    var sec = a.getSeconds();
-    var offset = '-0000';
-    return `${date} ${month} ${year} ${hour}:${min}:${sec} ${offset}`;
+    return `${a.getDate()} ${months[a.getMonth()]} ${a.getFullYear()} ${a.getHours()}:${a.getMinutes()}:${a.getSeconds()} -0000`;
 }
 
 function LoadGroups() {
@@ -38,7 +31,6 @@ function LoadArticle(request, newsgroup) {
         var server = newsgroup.split('.')[1];
         var group = newsgroup.split('.')[0];
         var id = m[1];
-        console.log(`./data/${server}/${group}/${id} - ${group}.${server}.txt`)
         if (fs.existsSync(`./data/${server}/${group}/${id} - ${group}.${server}.txt`)) {
             let rawdata = fs.readFileSync(`./data/${server}/${group}/${id} - ${group}.${server}.txt`);
             return String(rawdata);
@@ -62,7 +54,7 @@ function LoadHeader(id, newsgroup) {
 }
 
 module.exports = {
-    ConverDates,
+    ConvertDates,
     LoadGroups,
     LoadArticle,
     LoadHeader

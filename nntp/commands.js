@@ -25,7 +25,6 @@ module.exports = {
 function Mode(conn, param) {
     if (param == "READER") {
         conn.write(Response.code[200]);
-        console.log(Response.code[200]);
 
     }
     else {
@@ -46,7 +45,6 @@ function Group(conn, sockets, params) {
     groups = Driver.LoadGroups();
     if (params.length == 2) {
         sockets[conn.remoteAddress + ':' + conn.remotePort] = params[1];
-        console.log('[s] 211 ' + groups[params[1]]['high'] + ' 1 ' + groups[params[1]]['high'] + ' ' + params[1] + "\r\n");
         conn.write('211 ' + groups[params[1]]['high'] + ' 1 ' + groups[params[1]]['high'] + ' ' + params[1] + "\r\n");
         return;
     }
@@ -61,7 +59,7 @@ function Group(conn, sockets, params) {
 }
 
 function Date() {
-    conn.write("111 " + Driver.ConverDates(Date()) + "  Server date and time\r\n.\r\n");
+    conn.write("111 " + Driver.ConvertDates(Date()) + "  Server date and time\r\n.\r\n");
 }
 
 function Xover(conn, sockets, params) {
@@ -78,13 +76,11 @@ function Xover(conn, sockets, params) {
                 datatosend += article + '\t0\t0\r\n';
             }
         }
-        console.log(datatosend)
         conn.write(datatosend + '.\r\n');
     }
     else {
         conn.write(Response.code[412]);
         conn.write('.\r\n');
-        console.log('[s] .\r\n');
     }
 }
 
@@ -130,7 +126,6 @@ function Head(conn,sockets,params) {
 
 function Capabilities(conn) {
     conn.write(`${Response.code[101]} ${ValidCommands().join("\r\n")} \r\n.\r\n`);
-    console.log(`${Response.code[101]} ${ValidCommands().join("\r\n")} \r\n.\r\n`);
 
 }
 

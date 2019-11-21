@@ -1,5 +1,5 @@
 {
-    "serveradres":"localhost",
+    "serveradres":"127.0.0.1",
     "serverport":5555,
     "servername":"Test server",
     "serverversion":"",
