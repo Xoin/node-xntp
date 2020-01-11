@@ -1,13 +1,34 @@
-var includes = require('../includes');
+var incl = require('../includes');
 
 module.exports = {
     Parser
 };
 
 function Parser(conn, sockets, command) {
-    var text = "ARTICLE 20";
-    var found = regex[3977][201].exec(text)
-    var test = includes.Regex.Patterns[includes.RFC];
+    var commandfound = false;
+    var rfcpatterns = incl.Regex.Patterns[incl.RFC];
+    var inputdata = "ARTICLE <i.am.not.there@example.com>";
 
-    console.log(found)
+    Mainloop:
+    for (var key in rfcpatterns) {
+        if (commandfound) {
+            break;
+        }
+        var value = rfcpatterns[key];
+        console.log(key, value);
+        if (Object.keys(value).length > 0) {
+            console.log("objects");
+            for (var key2 in value) {
+                var value2 = value[key2];
+                if (value2) {
+                    console.log(inputdata.match(value2));
+                    commandfound = true;
+                    break Mainloop;
+                }
+            }
+        }
+        else {
+            console.log(inputdata.match(value));
+        }
+    }
 }
