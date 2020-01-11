@@ -10,6 +10,7 @@ function LoadGroups() {
         return JSON.parse(rawdata);
     }
 }
+var incl = require('../includes');
 
 function LoadArticle(request, newsgroup) {
     LogDriver(request + ' ' + newsgroup).extend('LoadArticle')

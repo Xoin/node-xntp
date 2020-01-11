@@ -21,10 +21,24 @@
                 "<node_internals>/**"
             ],
             "env": {
-                "DEBUG":"*",
-                "DEBUG_COLORS":"1"
+                "DEBUG": "*",
+                "DEBUG_COLORS": "1"
             },
             "program": "${workspaceFolder}\\server.js"
         }
-    ]
+    },
+    {
+        "type": "node",
+        "request": "launch",
+        "name": "Run test",
+        "skipFiles": [
+            "<node_internals>/**"
+        ],
+        "env": {
+            "DEBUG": "*",
+            "DEBUG_COLORS": "1"
+        },
+        "program": "${workspaceFolder}\\test.js"
+    }
+]
 }

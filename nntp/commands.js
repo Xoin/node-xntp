@@ -1,14 +1,34 @@
-var incl = require('../includes');
+var Core = require('../includes');
 
-module.exports = {
-    Parser
-};
+var Command = {
+    Article: require("./commands/ARTICLE"),
+    Body: require("./commands/BODY"),
+    Capabilities: require("./commands/CAPABILITIES"),
+    Date: require("./commands/DATE"),
+    Group: require("./commands/GROUP"),
+    Hdr: require("./commands/HDR"),
+    Head: require("./commands/HEAD"),
+    Help: require("./commands/HELP"),
+    Ihave: require("./commands/IHAVE"),
+    Last: require("./commands/LAST"),
+    List: require("./commands/LIST"),
+    Listgroup: require("./commands/LISTGROUP"),
+    Mode: require("./commands/MODE"),
+    Newgroups: require("./commands/NEWSGROUP"),
+    Newnews: require("./commands/NEWNEWS"),
+    Next: require("./commands/NEXT"),
+    Over: require("./commands/OVER"),
+    Post: require("./commands/POST"),
+    Quit: require("./commands/QUIT"),
+    Stat: require("./commands/STAT"),
+    Xover: require("./commands/XOVER")
+}
 
-function Parser(conn, sockets, command) {
+
+
+function Parser(conn, sockets, inputdata) {
+    var rfcpatterns = Core.Regex.Patterns[Core.RFC];
     var commandfound = false;
-    var rfcpatterns = incl.Regex.Patterns[incl.RFC];
-    var inputdata = "ARTICLE <i.am.not.there@example.com>";
-
     Mainloop:
     for (var key in rfcpatterns) {
         if (commandfound) {
@@ -21,14 +41,33 @@ function Parser(conn, sockets, command) {
             for (var key2 in value) {
                 var value2 = value[key2];
                 if (value2) {
-                    console.log(inputdata.match(value2));
+                    Hub(key2, inputdata.match(value2))
                     commandfound = true;
                     break Mainloop;
                 }
             }
+            conn.write(Core.Response.Message(501));
         }
         else {
-            console.log(inputdata.match(value));
+            Hub(key, inputdata.match(value))
         }
     }
+    conn.write(Core.Response.Message(500));
 }
+
+function Hub(commandid, data) {
+    switch (commandid) {
+        //3977
+        case "help":
+
+            break;
+        //3977
+        default:
+            break;
+    }
+}
+
+
+module.exports = {
+    Parser
+};

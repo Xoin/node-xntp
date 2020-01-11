@@ -41,12 +41,12 @@ var Commands = require('./nntp/commands.js');
 //--------------
 // Logging
 //--------------
-var debug = require('debug');
-var LogCommands = debug('commands');
-var LogServer = debug('server');
-var LogClientData = LogServer.extend('client data');
-var LogDriver = debug('driver');
+var debug = require('debug');;
 
+var Log = require("./server/logging").Log;
+//--------------
+// Exports
+//--------------
 module.exports = {
     fs: fs,
     Settings: Settings,
@@ -57,10 +57,7 @@ module.exports = {
     Response: Response,
     Regex: Regex,
     Commands: Commands,
+    RFC: RFC,
     debug: debug,
-    LogCommands: LogCommands,
-    LogServer: LogServer,
-    LogClientData: LogClientData,
-    LogDriver: LogDriver,
-    RFC: RFC
+    Log: Log
 }

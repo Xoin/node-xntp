@@ -1,4 +1,4 @@
-var incl = require('./includes');
+var incl = require('../includes');
 var code = {
     /*
     The first digit of the response broadly indicates the success, failure, or progress of the previous command.

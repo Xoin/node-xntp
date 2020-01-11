@@ -1,20 +1,20 @@
 {
-    "serveradres":"localhost",
-    "serverport":5555,
-    "servername":"Test server",
-    "serverversion":"",
-    "driver":"txt",
-    "connectionlimt":4,
-    "RFC":{
-        "977":false,
-        "3977":true,
+    "serveradres": "localhost",
+    "serverport": 5555,
+    "servername": "Test server",
+    "serverversion": "",
+    "driver": "txt",
+    "connectionlimt": 4,
+    "RFC": {
+        "977": false,
+        "3977": true
     },
-    "extensions":{
-        "2980":false,
-        "4642":false,
-        "4643":false,
-        "4644":false,
-        "6048":false,
-        "8143":false
+    "extensions": {
+        "2980": false,
+        "4642": false,
+        "4643": false,
+        "4644": false,
+        "6048": false,
+        "8143": false
     }
 }
