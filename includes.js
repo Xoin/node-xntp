@@ -20,26 +20,8 @@ var RFC;
 if (Settings["RFC"]["977"]) {
     RFC = 977;
 }
-else if (Settings["RFC"]["2980"]) {
-    RFC = 2980;
-}
 else if (Settings["RFC"]["3977"]) {
     RFC = 3977;
-}
-else if (Settings["RFC"]["4642"]) {
-    RFC = 4642;
-}
-else if (Settings["RFC"]["4643"]) {
-    RFC = 4643;
-}
-else if (Settings["RFC"]["4644"]) {
-    RFC = 4644;
-}
-else if (Settings["RFC"]["6048"]) {
-    RFC = 6048;
-}
-else if (Settings["RFC"]["8143"]) {
-    RFC = 8143;
 }
 else {
     RFC = 3977;

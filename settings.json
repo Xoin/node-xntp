@@ -7,8 +7,10 @@
     "connectionlimt":4,
     "RFC":{
         "977":false,
-        "2980":false,
         "3977":true,
+    },
+    "extensions":{
+        "2980":false,
         "4642":false,
         "4643":false,
         "4644":false,
