@@ -34,9 +34,10 @@ const net = require('net');
 var sockets = [];
 var server = net.createServer();
 
-var Response = require('./nntp/response.js');
+var Response = require('./nntp/response');
 var Regex = require('./nntp/regex.js');
 var Commands = require('./nntp/commands.js');
+var Routing = require('./server/routing')
 
 //--------------
 // Logging
@@ -53,8 +54,8 @@ module.exports = {
     Driver: Driver,
     net: net,
     sockets: sockets,
-    server: server,
     Response: Response,
+    server: server,
     Regex: Regex,
     Commands: Commands,
     RFC: RFC,

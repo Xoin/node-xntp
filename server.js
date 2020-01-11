@@ -15,7 +15,8 @@ function handleConnection(conn) {
 
     function onData(d) {
         Core.Log("server", d.replace("\r\n", ""));
-        Core.Commands.Parser(conn, sockets, d.replace("\r\n", ""))
+        conn.write(d);
+        //Core.Commands.Parser(conn.remoteAddress, conn.remotePort, d.replace("\r\n", ""))
     }
 
     function onClose() {

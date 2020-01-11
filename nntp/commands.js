@@ -14,7 +14,7 @@ var Command = {
     List: require("./commands/LIST"),
     Listgroup: require("./commands/LISTGROUP"),
     Mode: require("./commands/MODE"),
-    Newgroups: require("./commands/NEWSGROUP"),
+    Newgroups: require("./commands/NEWGROUPS"),
     Newnews: require("./commands/NEWNEWS"),
     Next: require("./commands/NEXT"),
     Over: require("./commands/OVER"),

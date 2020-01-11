@@ -1,3 +1,5 @@
+var incl = require('../includes');
+
 function ConvertDates(olddate) {
     var a = new Date(olddate);
     var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -10,7 +12,6 @@ function LoadGroups() {
         return JSON.parse(rawdata);
     }
 }
-var incl = require('../includes');
 
 function LoadArticle(request, newsgroup) {
     LogDriver(request + ' ' + newsgroup).extend('LoadArticle')

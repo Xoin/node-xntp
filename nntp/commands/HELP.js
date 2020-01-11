@@ -1,7 +1,16 @@
 var Core = require('../../includes');
 
 function Help(params) {
+    switch (Core.RFC) {
+        case 977:
 
+            break;
+        case 3977:
+
+            break;
+        default:
+            break;
+    }
 }
 
 function Article(conn, sockets, params) {
