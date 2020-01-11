@@ -1,4 +1,7 @@
 var fs = require('fs');
+var debug = require('debug');
+var LogDriver = debug('driver');
+
 function ConvertDates(olddate) {
     var a = new Date(olddate);
     var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -13,6 +16,7 @@ function LoadGroups() {
 }
 
 function LoadArticle(request, newsgroup) {
+    LogDriver(request + ' ' + newsgroup).extend('LoadArticle')
     const regex = /(<([0-9]+)@([a-z\-]+).([a-z\-]+)>|[0-9]+)/gm;
     let m = regex.exec(request);
     var server = m[4];
