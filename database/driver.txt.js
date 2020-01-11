@@ -1,7 +1,3 @@
-var fs = require('fs');
-var debug = require('debug');
-var LogDriver = debug('driver');
-
 function ConvertDates(olddate) {
     var a = new Date(olddate);
     var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
