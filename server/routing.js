@@ -4,6 +4,7 @@ class Meta {
     constructor(ip, port, conn) {
         this.ip = ip
         this.port = port
+        this.ipport = this.ip + ":" + this.port
     }
 }
 
@@ -50,14 +51,6 @@ function ConnectionGet(meta) {
     else {
         return false;
     }
-}
-
-function ConnectionDateSet(meta) {
-    Sessions[meta.ip][meta.port]["date"] = new Date();
-}
-
-function ConnectionDateGet(meta) {
-    return Sessions[meta.ip][meta.port]["date"];
 }
 
 function StateSet(meta, state) {

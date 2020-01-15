@@ -7,7 +7,7 @@ const fs = require('fs');
 // Settings
 //--------------
 let Settings;
-const Driver = require('./database/driver.txt.js');
+let Driver = require('./database/driver.txt.js');
 if (fs.existsSync('./settings.json')) {
     Settings = JSON.parse(fs.readFileSync('./settings.json', 'utf8'));
 }
@@ -16,7 +16,7 @@ if (fs.existsSync(`./database/driver.${Settings.driver}.js`)) {
 }
 
 // #todo
-const RFC;
+let RFC = 3977;
 if (Settings["RFC"]["977"]) {
     RFC = 977;
 }

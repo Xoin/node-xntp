@@ -1,15 +1,12 @@
 var Core = require('./includes');
 Core.server.on('connection', handleConnection);
-
-
 Core.server.listen(Core.Settings.serverport, Core.Settings.serveradres);
-
 Core.Log("server", `Server Created at ${Core.Settings.serveradres}:${Core.Settings.serverport}`);
 
 function handleConnection(conn) {
     conn.setEncoding('utf8');
     var ConnData = new Core.Routing.Meta(conn.remoteAddress, conn.remotePort)
-    Core.Log("server", 'new client connection from ' + ConnData.ip);
+    Core.Log("server", `new client connection from ${ConnData.ipport}`);
     Core.Routing.ConnectionAdd(ConnData, conn);
     Core.Routing.Send(ConnData, Core.Response.Message(201));
 
@@ -23,10 +20,11 @@ function handleConnection(conn) {
     }
 
     function onClose() {
-        Core.Log("server", `connection from ${remoteAddress} closed`);
+        Core.Log("server", `connection from ${ConnData.ip} closed`);
+        Core.Routing.ConnectionRemove(ConnData);
     }
 
     function onError(err) {
-        Core.Log("server", `Connection ${remoteAddress} error: ${err.message}`);
+        Core.Log("server", `Connection ${ConnData.ip} error: ${err.message}`);
     }
 }
