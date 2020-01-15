@@ -1,53 +1,93 @@
 var Core = require('../includes');
 
-class Sockets {
-    constructor() {
-        this.sockets = [];
-    }
-    List() {
-        return this.sockets;
-    }
-    Add(ip, port) {
-        var sessions = 0;
-        var canconnect = true;
-        if (!this.sockets.includes(`${ip}:${port}`)) {
-            if (this.sockets.length > 0) {
-                this.sockets.forEach(element => {
-                    if (element.startsWith(`${ip}`)) {
-                        sessions++;
-                        if (sessions < Core.Settings.connectionlimit) {
-                            console.log(sessions, `${ip}:${port}`, Core.Settings.connectionlimit);
-                        }
-                        else {
-                            canconnect = false;
-                        }
-                    }
-                });
-            }
-            if (canconnect) {
-                this.sockets.push(`${ip}:${port}`);
-            }
-        }
-    }
-    Remove(ip, port) {
-        for (var i = 0; i < this.sockets.length; i++) {
-            if (this.sockets[i] === `${ip}:${port}`) {
-                this.sockets.splice(i, 1);
-            }
-        }
+// Short term storage
+class Meta {
+    constructor(ip, port) {
+        this.ip = ip
+        this.port = port
     }
 }
 
-function Input(params) {
-    Core.Commands.Parser(conn, sockets, d.replace("\r\n", ""))
+// Long term storage
+var Sessions = {};
+
+function ConnectionAdd(meta, conn) {
+    if (Sessions[meta.ip]) {
+        if (Object.keys(Sessions[meta.ip]).length < Core.Settings.connectionlimit) {
+            Sessions[meta.ip][meta.port] = {};
+            Sessions[meta.ip][meta.port]["conn"] = conn;
+            Sessions[meta.ip][meta.port]["date"] = new Date();
+            Sessions[meta.ip][meta.port]["state"] = null;
+            Sessions[meta.ip][meta.port]["auth"] = null;
+        }
+    }
+    else {
+        Sessions[meta.ip] = {};
+        Sessions[meta.ip][meta.port] = {};
+        Sessions[meta.ip][meta.port]["conn"] = conn;
+        Sessions[meta.ip][meta.port]["date"] = new Date();
+        Sessions[meta.ip][meta.port]["state"] = null;
+        Sessions[meta.ip][meta.port]["auth"] = null;
+    }
 }
 
-function Output(params) {
+function ConnectionRemove(meta) {
+    if (Sessions[meta.ip] && Sessions[meta.ip][meta.port]) {
+        delete Sessions[meta.ip][meta.port];
+        return true;
+    }
+    else {
+        return false;
+    }
+}
 
+function ConnectionGet(meta) {
+    if (Sessions[meta.ip] && Sessions[meta.ip][meta.port]) {
+        return Sessions[meta.ip][meta.port];
+    }
+    else {
+        return false;
+    }
+}
+
+function ConnectionDateSet(meta) {
+    Sessions[meta.ip][meta.port]["date"] = new Date();
+}
+
+function ConnectionDateGet(meta) {
+    return Sessions[meta.ip][meta.port]["date"];
+}
+
+function StateSet(meta, state) {
+    Sessions[meta.ip][meta.port]["state"] = state;
+}
+
+function StateGet(meta) {
+    return Sessions[meta.ip][meta.port]["state"];
+}
+
+function AuthSet(meta, auth) {
+    Sessions[meta.ip][meta.port]["auth"] = auth;
+}
+
+function AuthGet(meta) {
+    return Sessions[meta.ip][meta.port]["auth"];
+}
+
+function Send(meta, data) {
+    ConnectionGet(meta).write(data);
 }
 
 module.exports = {
-    Sockets: Sockets,
-    Input: Input,
-    Output: Output
+    Meta: Meta,
+    ConnectionAdd: ConnectionAdd,
+    ConnectionRemove: ConnectionRemove,
+    ConnectionGet: ConnectionGet,
+    ConnectionDateSet: ConnectionDateSet,
+    ConnectionDateGet: ConnectionDateGet,
+    StateSet: StateSet,
+    StateGet: StateGet,
+    AuthSet: AuthSet,
+    AuthGet: AuthGet,
+    Send: Send
 };
