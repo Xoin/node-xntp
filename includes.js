@@ -31,9 +31,8 @@ else {
 // Server
 //--------------
 const net = require('net');
-var sockets = [];
 var server = net.createServer();
-
+const EventEmitter = require('events');
 var Response = require('./nntp/response');
 var Regex = require('./nntp/regex.js');
 var Commands = require('./nntp/commands.js');
@@ -53,7 +52,7 @@ module.exports = {
     Settings: Settings,
     Driver: Driver,
     net: net,
-    sockets: sockets,
+    Routing: Routing,
     Response: Response,
     server: server,
     Regex: Regex,

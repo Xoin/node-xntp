@@ -1,5 +1,7 @@
 var Core = require('../includes');
 
+const Network = new EventEmitter();
+
 var Command = {
     Article: require("./commands/ARTICLE"),
     Body: require("./commands/BODY"),
@@ -24,9 +26,7 @@ var Command = {
     Xover: require("./commands/XOVER")
 }
 
-
-
-function Parser(conn, sockets, inputdata) {
+function Parser(conn, inputdata) {
     var rfcpatterns = Core.Regex.Patterns[Core.RFC];
     var commandfound = false;
     Mainloop:

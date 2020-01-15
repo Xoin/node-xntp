@@ -2,7 +2,7 @@ var Core = require('../includes');
 
 // Short term storage
 class Meta {
-    constructor(ip, port) {
+    constructor(ip, port, conn) {
         this.ip = ip
         this.port = port
     }
@@ -11,23 +11,26 @@ class Meta {
 // Long term storage
 var Sessions = {};
 
-function ConnectionAdd(meta, conn) {
+function ConnectionAdd(meta, socket) {
     if (Sessions[meta.ip]) {
         if (Object.keys(Sessions[meta.ip]).length < Core.Settings.connectionlimit) {
             Sessions[meta.ip][meta.port] = {};
-            Sessions[meta.ip][meta.port]["conn"] = conn;
-            Sessions[meta.ip][meta.port]["date"] = new Date();
             Sessions[meta.ip][meta.port]["state"] = null;
+            Sessions[meta.ip][meta.port]["socket"] = socket;
             Sessions[meta.ip][meta.port]["auth"] = null;
+            return true;
+        }
+        else {
+            return false;
         }
     }
     else {
         Sessions[meta.ip] = {};
         Sessions[meta.ip][meta.port] = {};
-        Sessions[meta.ip][meta.port]["conn"] = conn;
-        Sessions[meta.ip][meta.port]["date"] = new Date();
         Sessions[meta.ip][meta.port]["state"] = null;
+        Sessions[meta.ip][meta.port]["socket"] = socket;
         Sessions[meta.ip][meta.port]["auth"] = null;
+        return true;
     }
 }
 
@@ -75,7 +78,7 @@ function AuthGet(meta) {
 }
 
 function Send(meta, data) {
-    ConnectionGet(meta).write(data);
+    Sessions[meta.ip][meta.port]["socket"].write(data);
 }
 
 module.exports = {
@@ -83,8 +86,6 @@ module.exports = {
     ConnectionAdd: ConnectionAdd,
     ConnectionRemove: ConnectionRemove,
     ConnectionGet: ConnectionGet,
-    ConnectionDateSet: ConnectionDateSet,
-    ConnectionDateGet: ConnectionDateGet,
     StateSet: StateSet,
     StateGet: StateGet,
     AuthSet: AuthSet,
