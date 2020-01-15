@@ -1,5 +1,4 @@
 var Core = require('../includes');
-
 // Short term storage
 class Meta {
     constructor(ip, port, conn) {

@@ -8,7 +8,7 @@ Core.Log("server", `Server Created at ${Core.Settings.serveradres}:${Core.Settin
 
 function handleConnection(conn) {
     conn.setEncoding('utf8');
-    var ConnData = new Core.Routing.Meta(conn.remoteAddress, conn.remotePort, conn)
+    var ConnData = new Core.Routing.Meta(conn.remoteAddress, conn.remotePort)
     Core.Log("server", 'new client connection from ' + ConnData.ip);
     Core.Routing.ConnectionAdd(ConnData, conn);
     Core.Routing.Send(ConnData, Core.Response.Message(201));
@@ -19,7 +19,7 @@ function handleConnection(conn) {
 
     function onData(data) {
         Core.Log("server", data.replace("\r\n", ""));
-        Core.Commands.Parser(ConnData, data)
+        Core.Commands.Parser(ConnData, data.replace("\r\n", ""))
     }
 
     function onClose() {

@@ -6,8 +6,8 @@ const fs = require('fs');
 //--------------
 // Settings
 //--------------
-var Settings;
-var Driver = require('./database/driver.txt.js');
+let Settings;
+const Driver = require('./database/driver.txt.js');
 if (fs.existsSync('./settings.json')) {
     Settings = JSON.parse(fs.readFileSync('./settings.json', 'utf8'));
 }
@@ -16,7 +16,7 @@ if (fs.existsSync(`./database/driver.${Settings.driver}.js`)) {
 }
 
 // #todo
-var RFC;
+const RFC;
 if (Settings["RFC"]["977"]) {
     RFC = 977;
 }
@@ -31,19 +31,18 @@ else {
 // Server
 //--------------
 const net = require('net');
-var server = net.createServer();
-const EventEmitter = require('events');
-var Response = require('./nntp/response');
-var Regex = require('./nntp/regex.js');
-var Commands = require('./nntp/commands.js');
-var Routing = require('./server/routing')
+const server = net.createServer();
+const Regex = require('./nntp/regex.js');
+const Commands = require('./nntp/commands.js');
+const Response = require('./nntp/response');
+const Routing = require('./server/routing')
 
 //--------------
 // Logging
 //--------------
-var debug = require('debug');;
+const debug = require('debug');
 
-var Log = require("./server/logging").Log;
+const Log = require("./server/logging").Log;
 //--------------
 // Exports
 //--------------

@@ -1,12 +1,16 @@
+'use strict';
+var Core = require('../includes.js');
+
 var Patterns = {
-    3977: {
-        'article': {
+    "3977": {
+        'HELP': {
             //ARTICLE <i.am.not.there@example.com>
-            'test': /^(ARTICLE) (<[a-z\.@]+>)$/,
-            'test2': /^(ARTICLE) ([0-9]+)$/g
+            'test': /^HELP$/
         },
-        'post': /^(ARTICLE) ([0-9]+)$/g,
-        'help': /^HELP$/g
+        'ARTICLE': {
+            //ARTICLE <i.am.not.there@example.com>
+            'test': /^(ARTICLE) ([0-9]+)$/
+        }
     }
 }
 
