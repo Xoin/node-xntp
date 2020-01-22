@@ -1,8 +1,15 @@
+const Core = {
+    Regex: require("./regex"),
+    Response: require("./response"),
+    Routing: require("../server/routing"),
+    RFC: require("../includes/settings").RFC
+}
+
 const Commands = {
     Article: require("./commands/ARTICLE"),
     Body: require("./commands/BODY"),
     Capabilities: require("./commands/CAPABILITIES"),
-    Date: require("./commands/DATE"),
+    Date: require("./commands/DATE").Date,
     Group: require("./commands/GROUP"),
     Hdr: require("./commands/HDR"),
     Head: require("./commands/HEAD"),
@@ -20,13 +27,6 @@ const Commands = {
     Quit: require("./commands/QUIT"),
     Stat: require("./commands/STAT"),
     Xover: require("./commands/XOVER")
-}
-
-const Core = {
-    Regex: require("./regex"),
-    Response: require("./response"),
-    Routing: require("../server/routing"),
-    RFC: require("../includes/settings").RFC
 }
 
 function Parser(ConnData, inputdata) {
@@ -58,6 +58,9 @@ function Hub(commandid, ConnData, data) {
         //HELP 3977
         case "help":
             Commands.Help(ConnData, data)
+            break;
+        case "date":
+            Commands.Date(ConnData, data)
             break;
         //3977
         default:

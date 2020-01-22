@@ -11,6 +11,10 @@ var Patterns = {
         'MODE': {
             //MODE READER
             'modereader': /^MODE READER$/
+        },
+        'DATE': {
+            //DATE
+            'date': /^DATE$/
         }
     }
 }
