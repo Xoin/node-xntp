@@ -5,6 +5,7 @@
     "serverversion": "",
     "driver": "txt",
     "connectionlimit": 4,
+    "posting": false,
     "RFC": {
         "977": false,
         "3977": true

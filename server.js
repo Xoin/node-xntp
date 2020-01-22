@@ -1,6 +1,15 @@
-var Core = require('./includes');
-Core.server.on('connection', handleConnection);
-Core.server.listen(Core.Settings.serverport, Core.Settings.serveradres);
+const Core = {
+    Settings: require("./includes/settings").Settings,
+    Response: require("./nntp/Response"),
+    Routing: require("./server/routing"),
+    Commands: require("./nntp/commands"),
+    Log: require("./server/logging").Log
+}
+
+const net = require('net');
+const server = net.createServer();
+server.on('connection', handleConnection);
+server.listen(Core.Settings.serverport, Core.Settings.serveradres);
 Core.Log("server", `Server Created at ${Core.Settings.serveradres}:${Core.Settings.serverport}`);
 
 function handleConnection(conn) {

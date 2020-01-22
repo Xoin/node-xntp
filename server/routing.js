@@ -1,4 +1,7 @@
-var Core = require('../includes');
+const Core = {
+    Settings: require("../includes/settings").Settings
+}
+
 // Short term storage
 class Meta {
     constructor(ip, port, conn) {
@@ -9,7 +12,7 @@ class Meta {
 }
 
 // Long term storage
-var Sessions = {};
+let Sessions = {};
 
 function ConnectionAdd(meta, socket) {
     if (Sessions[meta.ip]) {
@@ -71,6 +74,10 @@ function AuthGet(meta) {
 
 function Send(meta, data) {
     Sessions[meta.ip][meta.port]["socket"].write(data);
+}
+
+function Close(meta, data) {
+    Sessions[meta.ip][meta.port]["socket"].destroy();
 }
 
 module.exports = {

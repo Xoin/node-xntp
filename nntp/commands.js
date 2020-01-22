@@ -1,31 +1,32 @@
-
-// var Command = {
-//     Article: require("./commands/ARTICLE"),
-//     Body: require("./commands/BODY"),
-//     Capabilities: require("./commands/CAPABILITIES"),
-//     Date: require("./commands/DATE"),
-//     Group: require("./commands/GROUP"),
-//     Hdr: require("./commands/HDR"),
-//     Head: require("./commands/HEAD"),
-//     Help: require("./commands/HELP"),
-//     Ihave: require("./commands/IHAVE"),
-//     Last: require("./commands/LAST"),
-//     List: require("./commands/LIST"),
-//     Listgroup: require("./commands/LISTGROUP"),
-//     Mode: require("./commands/MODE"),
-//     Newgroups: require("./commands/NEWGROUPS"),
-//     Newnews: require("./commands/NEWNEWS"),
-//     Next: require("./commands/NEXT"),
-//     Over: require("./commands/OVER"),
-//     Post: require("./commands/POST"),
-//     Quit: require("./commands/QUIT"),
-//     Stat: require("./commands/STAT"),
-//     Xover: require("./commands/XOVER")
-// }
-let Core = require('./../includes');
+const Article = require("./commands/ARTICLE");
+const Body = require("./commands/BODY");
+const Capabilities = require("./commands/CAPABILITIES");
+const Date = require("./commands/DATE");
+const Group = require("./commands/GROUP");
+const Hdr = require("./commands/HDR");
+const Head = require("./commands/HEAD");
+const Help = require("./commands/HELP");
+const Ihave = require("./commands/IHAVE");
+const Last = require("./commands/LAST");
+const List = require("./commands/LIST");
+const Listgroup = require("./commands/LISTGROUP");
+const Mode = require("./commands/MODE");
+const Newgroups = require("./commands/NEWGROUPS");
+const Newnews = require("./commands/NEWNEWS");
+const Next = require("./commands/NEXT");
+const Over = require("./commands/OVER");
+const Post = require("./commands/POST");
+const Quit = require("./commands/QUIT");
+const Stat = require("./commands/STAT");
+const Xover = require("./commands/XOVER");
+const Core = {
+    Regex: require("./regex"),
+    Response: require("./response"),
+    Routing: require("../server/routing"),
+    RFC: require("../includes/settings").RFC
+}
 
 function Parser(ConnData, inputdata) {
-    Core = require('./../includes');
     let rfcpatterns = Core.Regex.Patterns[Core.RFC];
     let commandtypes = rfcpatterns[inputdata.split(' ')[0]];
     if (commandtypes) {
@@ -48,8 +49,8 @@ function Parser(ConnData, inputdata) {
 function Hub(commandid, data) {
     switch (commandid) {
         //3977
-        case "help":
-            console.log(data);
+        case "modereader":
+            Mode.Mode(commandid, data)
             break;
         //3977
         default:

@@ -1,5 +1,3 @@
-var Core = require('../includes');
-
 function Log(type, params) {
     switch (type) {
         case "server":

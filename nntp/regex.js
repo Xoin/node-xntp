@@ -1,5 +1,4 @@
 'use strict';
-var Core = require('../includes.js');
 
 var Patterns = {
     "3977": {
@@ -10,6 +9,10 @@ var Patterns = {
         'ARTICLE': {
             //ARTICLE <i.am.not.there@example.com>
             'test': /^(ARTICLE) ([0-9]+)$/
+        },
+        'MODE': {
+            //ARTICLE <i.am.not.there@example.com>
+            'modereader': /^MODE READER$/
         }
     }
 }
