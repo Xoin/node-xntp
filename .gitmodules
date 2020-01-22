@@ -1,0 +1,3 @@
+[submodule "api/Blackout"]
+	path = api/Blackout
+	url = https://github.com/Xoin/Blackout.git
