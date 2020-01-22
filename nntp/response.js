@@ -5,6 +5,7 @@ var responses = {
     3977: {
         100: "help text follows",
         101: "Capability list:",
+        111: "{1}",
         199: "debug output",
         200: "server ready - posting allowed",
         201: "server ready - no posting allowed",
@@ -44,8 +45,18 @@ var responses = {
 
 function Message(codeid) {
     if (responses[Core.RFC][codeid]) {
-        console.log(codeid + " " + responses[Core.RFC][codeid]);
-        return codeid + " " + responses[Core.RFC][codeid];
+        if (arguments.length > 0) {
+            let replacetext = responses[Core.RFC][codeid];
+            for (let index = 1; index < arguments.length; index++) {
+                replacetext = replacetext.replace("{" + index + "}", arguments[index]);
+            }
+            console.log(codeid + " " + replacetext);
+            return codeid + " " + replacetext;
+        }
+        else {
+            console.log(codeid + " " + responses[Core.RFC][codeid]);
+            return codeid + " " + responses[Core.RFC][codeid];
+        }
     }
     else {
         return false;
