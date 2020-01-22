@@ -1,32 +1,26 @@
-var Core = require('../../includes');
+const Core = {
+    Regex: require("../regex"),
+    Response: require("../response"),
+    Routing: require("../../server/routing"),
+    RFC: require("../../includes/settings").RFC
+}
 
-function Help(params) {
+function Help(ConnData, params) {
     switch (Core.RFC) {
         case 977:
-
             break;
         case 3977:
-
+            Help3977(ConnData, params);
             break;
         default:
             break;
     }
 }
 
-function Article(conn, sockets, params) {
-    var Log = LogCommands.extend('article');
-    Log('Socket: ' + JSON.stringify(sockets) + ' params:' + JSON.stringify(params));
-    if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
-        var article = Driver.LoadArticle(d, sockets[conn.remoteAddress + ':' + conn.remotePort])
-        if (article != false) {
-            conn.write('220' + params[0] + "\r\n");
-            conn.write(article + "\r\n");
-            Log(article);
-            conn.write(".\r\n");
-        }
-        else {
-            Log(Response.code[3977][430])
-            conn.write(Response.code[3977][430]);
-        }
-    }
+function Help3977(ConnData, params) {
+    Core.Routing.Send(new Core.Routing.Package(ConnData, Core.Response.Message(100)));
 }
+
+module.exports = {
+    Help: Help
+};

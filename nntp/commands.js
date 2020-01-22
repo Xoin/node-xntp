@@ -1,24 +1,27 @@
-const Article = require("./commands/ARTICLE");
-const Body = require("./commands/BODY");
-const Capabilities = require("./commands/CAPABILITIES");
-const Date = require("./commands/DATE");
-const Group = require("./commands/GROUP");
-const Hdr = require("./commands/HDR");
-const Head = require("./commands/HEAD");
-const Help = require("./commands/HELP");
-const Ihave = require("./commands/IHAVE");
-const Last = require("./commands/LAST");
-const List = require("./commands/LIST");
-const Listgroup = require("./commands/LISTGROUP");
-const Mode = require("./commands/MODE");
-const Newgroups = require("./commands/NEWGROUPS");
-const Newnews = require("./commands/NEWNEWS");
-const Next = require("./commands/NEXT");
-const Over = require("./commands/OVER");
-const Post = require("./commands/POST");
-const Quit = require("./commands/QUIT");
-const Stat = require("./commands/STAT");
-const Xover = require("./commands/XOVER");
+const Commands = {
+    Article: require("./commands/ARTICLE"),
+    Body: require("./commands/BODY"),
+    Capabilities: require("./commands/CAPABILITIES"),
+    Date: require("./commands/DATE"),
+    Group: require("./commands/GROUP"),
+    Hdr: require("./commands/HDR"),
+    Head: require("./commands/HEAD"),
+    Help: require("./commands/HELP").Help,
+    Ihave: require("./commands/IHAVE"),
+    Last: require("./commands/LAST"),
+    List: require("./commands/LIST"),
+    Listgroup: require("./commands/LISTGROUP"),
+    Mode: require("./commands/MODE").Mode,
+    Newgroups: require("./commands/NEWGROUPS"),
+    Newnews: require("./commands/NEWNEWS"),
+    Next: require("./commands/NEXT"),
+    Over: require("./commands/OVER"),
+    Post: require("./commands/POST"),
+    Quit: require("./commands/QUIT"),
+    Stat: require("./commands/STAT"),
+    Xover: require("./commands/XOVER")
+}
+
 const Core = {
     Regex: require("./regex"),
     Response: require("./response"),
@@ -33,24 +36,28 @@ function Parser(ConnData, inputdata) {
         for (let key in commandtypes) {
             let value = commandtypes[key];
             if (inputdata.match(value)) {
-                Hub(key, inputdata.match(value));
+                Hub(key, ConnData, inputdata.match(value));
                 return true;
             }
         }
-        Core.Routing.Send(ConnData, Core.Response.Message(501));
+        Core.Routing.Send(new Core.Routing.Package(ConnData, Core.Response.Message(501)));
         return false;
     }
     else {
-        Core.Routing.Send(ConnData, Core.Response.Message(500));
+        Core.Routing.Send(new Core.Routing.Package(ConnData, Core.Response.Message(500)));
         return false;
     }
 }
 
-function Hub(commandid, data) {
+function Hub(commandid, ConnData, data) {
     switch (commandid) {
-        //3977
+        //MODE READER 3977
         case "modereader":
-            Mode.Mode(commandid, data)
+            Commands.Mode(ConnData, data)
+            break;
+        //HELP 3977
+        case "help":
+            Commands.Help(ConnData, data)
             break;
         //3977
         default:

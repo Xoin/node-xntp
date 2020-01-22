@@ -1,5 +1,11 @@
+const Core = {
+    Settings: require("../../includes/settings").Settings,
+    Response: require("../response"),
+    Routing: require("../../server/routing"),
+    RFC: require("../../includes/settings").RFC
+}
+
 function Mode(ConnData, params) {
-    let Core = require('../../includes');
     switch (Core.RFC) {
         case 977:
             break;
@@ -12,14 +18,14 @@ function Mode(ConnData, params) {
 }
 
 function Mode3977(ConnData, params) {
-    let Core = require('../../includes');
+    let response = new Core.Routing.Package(ConnData);
     if (Core.Settings.posting) {
-        Core.Routing.Send(ConnData, Core.Response.Message(200));
+        response.Add(Core.Response.Message(200));
     }
     else {
-        Core.Routing.Send(ConnData, Core.Response.Message(201));
+        response.Add(Core.Response.Message(201));
     }
-
+    Core.Routing.Send(response);
 }
 
 module.exports = {

@@ -1,4 +1,6 @@
-var Core = require('../includes');
+const Core = {
+    RFC: require("../includes/settings").RFC
+}
 var rfc3977 = {
     100: "help text follows",
     101: "Capability list:",
@@ -50,8 +52,8 @@ switch (Core.RFC) {
 
 function Message(codeid) {
     if (rfcmessage[codeid]) {
-        console.log(codeid + " " + rfcmessage[codeid] + "\r\n");
-        return codeid + " " + rfcmessage[codeid] + "\r\n";
+        console.log(codeid + " " + rfcmessage[codeid]);
+        return codeid + " " + rfcmessage[codeid];
     }
     else {
         return false;

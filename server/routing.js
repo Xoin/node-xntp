@@ -11,6 +11,40 @@ class Meta {
     }
 }
 
+class Package {
+    constructor(Meta, data) {
+        this.ip = Meta.ip
+        this.port = Meta.port
+        this.ipport = this.ip + ":" + this.port
+        this.data = [];
+        if (data != undefined) {
+            if (Array.isArray(data)) {
+                for (line of data) {
+                    this.data.push(line + '\r\n')
+                }
+            }
+            else {
+                this.data.push(data + '\r\n')
+            }
+        }
+    }
+    Add(data) {
+        if (data != undefined) {
+            if (Array.isArray(data)) {
+                for (line of data) {
+                    this.data.push(line + '\r\n')
+                }
+            }
+            else {
+                this.data.push(data + '\r\n')
+            }
+        }
+    }
+    Close() {
+        this.data.push('.\r\n')
+    }
+}
+
 // Long term storage
 let Sessions = {};
 
@@ -72,8 +106,8 @@ function AuthGet(meta) {
     return Sessions[meta.ip][meta.port]["auth"];
 }
 
-function Send(meta, data) {
-    Sessions[meta.ip][meta.port]["socket"].write(data);
+function Send(package) {
+    Sessions[package.ip][package.port]["socket"].write(package.data.join(""));
 }
 
 function Close(meta, data) {
@@ -89,5 +123,6 @@ module.exports = {
     StateGet: StateGet,
     AuthSet: AuthSet,
     AuthGet: AuthGet,
-    Send: Send
+    Send: Send,
+    Package: Package
 };

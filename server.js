@@ -17,7 +17,7 @@ function handleConnection(conn) {
     var ConnData = new Core.Routing.Meta(conn.remoteAddress, conn.remotePort)
     Core.Log("server", `new client connection from ${ConnData.ipport}`);
     Core.Routing.ConnectionAdd(ConnData, conn);
-    Core.Routing.Send(ConnData, Core.Response.Message(201));
+    Core.Routing.Send(new Core.Routing.Package(ConnData, Core.Response.Message(201)));
 
     conn.on('data', onData);
     conn.once('close', onClose);
