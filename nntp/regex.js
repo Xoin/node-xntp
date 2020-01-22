@@ -1,5 +1,3 @@
-'use strict';
-
 var Patterns = {
     "3977": {
         'HELP': {
@@ -7,11 +5,11 @@ var Patterns = {
             'help': /^HELP$/
         },
         'ARTICLE': {
-            //ARTICLE <i.am.not.there@example.com>
+            //ARTICLE 1234
             'article': /^(ARTICLE) ([0-9]+)$/
         },
         'MODE': {
-            //ARTICLE <i.am.not.there@example.com>
+            //MODE READER
             'modereader': /^MODE READER$/
         }
     }
