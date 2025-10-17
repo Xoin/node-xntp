@@ -75,7 +75,7 @@ function handleConnection(conn) {
                 Commands.Mode(conn, temp[1]);
                 break;
             case "LIST":
-                Commands.List(conn, sockets);
+                Commands.List(conn, sockets, temp);
                 break;
             case "LISTGROUP":
                 Commands.Listgroup(conn, sockets, temp);

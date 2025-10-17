@@ -63,43 +63,120 @@ module.exports = {
  * @param {string} params - Mode parameter (e.g., "READER")
  */
 function Mode(conn, params) {
-    var Log = LogCommands.extend('reader');
+    var Log = LogCommands.extend('mode');
     Log("%o",params)
-    if (params == "READER") {
-        // 200: Server ready, posting allowed
-        conn.write(Response.code[200]);
-        Log("%o",Response.code[200])
-    }
-    else {
-        // 201: Server ready, no posting allowed
+    
+    if (params && params.toUpperCase() == "READER") {
+        // RFC 3977: 200 means posting is allowed, 201 means posting not allowed
+        // For now, we don't allow posting
         conn.write(Response.code[201]);
         Log("%o",Response.code[201])
+    }
+    else {
+        // Invalid mode or no mode specified
+        conn.write(Response.code[501]);
+        Log("Invalid MODE parameter")
     }
 }
 /**
  * Handle LIST command
  * Returns a list of all available newsgroups with their high/low article numbers
+ * RFC 3977 adds support for LIST variants: ACTIVE, NEWSGROUPS, OVERVIEW.FMT
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} params - Command parameters (not currently used)
+ * @param {Object} params - Command parameters
+ * @param {Array<string>} temp - Full command array [command, variant, wildmat]
  */
-function List(conn, params) {
+function List(conn, params, temp) {
     var Log = LogCommands.extend('list');
-    Log("%o",Response.code[215])
     
-    // 215: List of newsgroups follows
-    conn.write(Response.code[215]);
+    // Determine which LIST variant to use
+    var variant = temp[1] ? temp[1].toUpperCase() : 'ACTIVE';
+    var wildmat = temp[2] || '*';
     
-    // Load groups from database and send each one
-    groups = Driver.LoadGroups();
-    Object.getOwnPropertyNames(groups).forEach(element => {
-        // Format: groupname high low high
-        conn.write(`${element} ${groups[element]['high']} ${groups[element]['low']} ${groups[element]['high']}\r\n`);
-    });
-    Log("%O",JSON.stringify(groups))
+    Log('LIST variant: ' + variant);
     
-    // End of list marker
-    conn.write(".\r\n");
+    switch(variant) {
+        case 'ACTIVE':
+        case 'ACTIVE.TIMES':
+            // 215: List of newsgroups follows
+            conn.write(Response.code[215]);
+            
+            // Load groups from database and send each one
+            groups = Driver.LoadGroups();
+            Object.getOwnPropertyNames(groups).forEach(element => {
+                // Skip non-group entries
+                if (!groups[element].high || !groups[element].low) {
+                    return;
+                }
+                // Format: groupname high low status
+                // Status: y = posting allowed, n = no posting, m = moderated
+                conn.write(`${element} ${groups[element]['high']} ${groups[element]['low']} n\r\n`);
+            });
+            Log("%O",JSON.stringify(groups))
+            
+            // End of list marker
+            conn.write(".\r\n");
+            break;
+            
+        case 'NEWSGROUPS':
+            // 215: List of newsgroups follows (with descriptions)
+            conn.write(Response.code[215]);
+            
+            groups = Driver.LoadGroups();
+            Object.getOwnPropertyNames(groups).forEach(element => {
+                // Skip non-group entries
+                if (!groups[element].high || !groups[element].low) {
+                    return;
+                }
+                // Format: groupname description
+                conn.write(`${element} ${element} newsgroup\r\n`);
+            });
+            
+            conn.write(".\r\n");
+            Log("LIST NEWSGROUPS sent");
+            break;
+            
+        case 'OVERVIEW.FMT':
+            // 215: Information follows
+            conn.write(Response.code[215]);
+            
+            // RFC 3977 standard overview format
+            conn.write("Subject:\r\n");
+            conn.write("From:\r\n");
+            conn.write("Date:\r\n");
+            conn.write("Message-ID:\r\n");
+            conn.write("References:\r\n");
+            conn.write(":bytes\r\n");
+            conn.write(":lines\r\n");
+            
+            conn.write(".\r\n");
+            Log("LIST OVERVIEW.FMT sent");
+            break;
+            
+        default:
+            // Backward compatibility - no variant specified
+            if (!temp[1]) {
+                // Default to ACTIVE
+                conn.write(Response.code[215]);
+                
+                groups = Driver.LoadGroups();
+                Object.getOwnPropertyNames(groups).forEach(element => {
+                    // Skip non-group entries
+                    if (!groups[element].high || !groups[element].low) {
+                        return;
+                    }
+                    // RFC 977 format: groupname high low high
+                    conn.write(`${element} ${groups[element]['high']} ${groups[element]['low']} ${groups[element]['high']}\r\n`);
+                });
+                
+                conn.write(".\r\n");
+            } else {
+                // Unknown LIST variant
+                conn.write(Response.code[501]);
+            }
+            break;
+    }
 }
 
 /**
@@ -172,33 +249,37 @@ function Xover(conn, sockets, params) {
     Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
     
     // Check if client has selected a newsgroup
-    if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
-        // 224: Overview information follows
-        conn.write(Response.code[224]);
-
-        // Parse article range (e.g., "1-100")
-        const regex = /([0-9]+)-([0-9]+)/gm;
-        let m;
-        m = regex.exec(params[1]);
-        var datatosend = "";
-        
-        // Iterate through article range and load headers
-        for (let index = parseInt(m[1]); index <= parseInt(m[2]); index++) {
-            var article = Driver.LoadHeader(index, sockets[conn.remoteAddress + ':' + conn.remotePort])
-            if (article != false) {
-                // Append article overview data with line count and byte count
-                datatosend += article + '\t0\t0\r\n';
-            }
-        }
-        Log(JSON.stringify(datatosend))
-        conn.write(datatosend + '.\r\n');
-    }
-    else {
-        // 412: No newsgroup selected
-        Log(Response.code[412])
+    if (!sockets[conn.remoteAddress + ':' + conn.remotePort]) {
         conn.write(Response.code[412]);
-        conn.write('.\r\n');
+        Log("No newsgroup selected");
+        return;
     }
+    
+    // 224: Overview information follows
+    conn.write(Response.code[224]);
+
+    // Parse article range (e.g., "1-100")
+    if (params[1]) {
+        const regex = /([0-9]+)-([0-9]+)/gm;
+        let m = regex.exec(params[1]);
+        
+        if (m) {
+            var datatosend = "";
+            
+            // Iterate through article range and load headers
+            for (let index = parseInt(m[1]); index <= parseInt(m[2]); index++) {
+                var article = Driver.LoadHeader(index, sockets[conn.remoteAddress + ':' + conn.remotePort])
+                if (article != false) {
+                    // Append article overview data with line count and byte count
+                    datatosend += article + '\t0\t0\r\n';
+                }
+            }
+            Log(JSON.stringify(datatosend))
+            conn.write(datatosend);
+        }
+    }
+    
+    conn.write('.\r\n');
 }
 
 /**
