@@ -40,7 +40,7 @@ module.exports = {
     Stat,
     List,
     Group,
-    Date,
+    DateCommand,
     Xover,
     Help,
     Quit,
@@ -220,10 +220,10 @@ function Group(conn, sockets, params) {
  * 
  * @param {net.Socket} conn - The client connection
  */
-function Date(conn) {
+function DateCommand(conn) {
     var Log = LogCommands.extend('date');
     // Get current date and format as YYYYMMDDHHMMSS
-    var now = new Date();
+    var now = new global.Date();
     var dateStr = now.getUTCFullYear() + 
                   String(now.getUTCMonth() + 1).padStart(2, '0') +
                   String(now.getUTCDate()).padStart(2, '0') +

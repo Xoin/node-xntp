@@ -84,7 +84,7 @@ function handleConnection(conn) {
                 Commands.Group(conn, sockets, temp);
                 break;
             case "DATE":
-                Commands.Date(conn);
+                Commands.DateCommand(conn);
                 break;
             case "OVER":
             case "XOVER":
