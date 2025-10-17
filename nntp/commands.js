@@ -30,6 +30,44 @@ if (fs.existsSync(`../database/driver.${Settings.driver}.js`)) {
     Driver = require(`../database/driver.${Settings.driver}.js`);
 }
 
+/**
+ * Helper function to get session data for a connection
+ * 
+ * @param {Object} sessions - The sessions object
+ * @param {net.Socket} conn - The connection socket
+ * @returns {Object|null} Session data or null if not found
+ */
+function getSession(sessions, conn) {
+    const key = conn.remoteAddress + ':' + conn.remotePort;
+    return sessions[key] || null;
+}
+
+/**
+ * Helper function to get selected newsgroup for a connection
+ * 
+ * @param {Object} sessions - The sessions object
+ * @param {net.Socket} conn - The connection socket
+ * @returns {string|null} Selected newsgroup or null
+ */
+function getSelectedGroup(sessions, conn) {
+    const session = getSession(sessions, conn);
+    return session ? session.selectedGroup : null;
+}
+
+/**
+ * Helper function to set selected newsgroup for a connection
+ * 
+ * @param {Object} sessions - The sessions object
+ * @param {net.Socket} conn - The connection socket
+ * @param {string} group - The newsgroup name
+ */
+function setSelectedGroup(sessions, conn, group) {
+    const session = getSession(sessions, conn);
+    if (session) {
+        session.selectedGroup = group;
+    }
+}
+
 module.exports = {
     ValidCommands,
     Mode,
@@ -57,6 +95,7 @@ module.exports = {
     Xpat,
     Xhdr
 };
+
 
 /**
  * Handle MODE command
@@ -185,15 +224,15 @@ function List(conn, params, temp) {
 /**
  * Handle GROUP command
  * Selects a newsgroup and returns information about it
- * Stores the selected group in the sockets array for the client session
+ * Stores the selected group in the session for the client
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client sessions
  * @param {Array<string>} params - Command parameters [command, groupname]
  */
-function Group(conn, sockets, params) {
+function Group(conn, sessions, params) {
     var Log = LogCommands.extend('group');
-    Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
+    Log('params:'+JSON.stringify(params));
     groups = Driver.LoadGroups();
     
     if (params.length >= 2) {
@@ -201,8 +240,8 @@ function Group(conn, sockets, params) {
         
         // Check if group exists
         if (groups[groupname]) {
-            // Store selected group for this client
-            sockets[conn.remoteAddress + ':' + conn.remotePort] = groupname;
+            // Store selected group for this client session
+            setSelectedGroup(sessions, conn, groupname);
             // Response: 211 count low high groupname
             conn.write('211 ' + groups[groupname]['high'] + ' ' + groups[groupname]['low'] + ' ' + groups[groupname]['high'] + ' ' + groupname + "\r\n");
         } else {
@@ -243,15 +282,15 @@ function DateCommand(conn) {
  * Overview data includes headers like subject, from, date, message-id, etc.
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client connections to their selected newsgroups
  * @param {Array<string>} params - Command parameters [command, range] (e.g., ["XOVER", "1-100"])
  */
-function Xover(conn, sockets, params) {
+function Xover(conn, sessions, params) {
     var Log = LogCommands.extend('xover');
-    Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
+    Log('Session info'+' params:'+JSON.stringify(params));
     
     // Check if client has selected a newsgroup
-    if (!sockets[conn.remoteAddress + ':' + conn.remotePort]) {
+    if (!getSelectedGroup(sessions, conn)) {
         conn.write(Response.code[412]);
         Log("No newsgroup selected");
         return;
@@ -270,7 +309,7 @@ function Xover(conn, sockets, params) {
             
             // Iterate through article range and load headers
             for (let index = parseInt(m[1]); index <= parseInt(m[2]); index++) {
-                var article = Driver.LoadHeader(index, sockets[conn.remoteAddress + ':' + conn.remotePort])
+                var article = Driver.LoadHeader(index, getSelectedGroup(sessions, conn))
                 if (article != false) {
                     // Append article overview data with line count and byte count
                     datatosend += article + '\t0\t0\r\n';
@@ -289,16 +328,16 @@ function Xover(conn, sockets, params) {
  * Retrieves and returns the full article (headers and body)
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client connections to their selected newsgroups
  * @param {Array<string>} params - Command parameters [command, article-id or number]
  */
-function Article(conn,sockets,params) {
+function Article(conn,sessions,params) {
     var Log = LogCommands.extend('article');
-    Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
+    Log('Session info'+' params:'+JSON.stringify(params));
     
     // Check if client has selected a newsgroup
-    if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
-        var article = Driver.LoadArticle(params[1], sockets[conn.remoteAddress + ':' + conn.remotePort])
+    if (getSelectedGroup(sessions, conn)) {
+        var article = Driver.LoadArticle(params[1], getSelectedGroup(sessions, conn))
         if (article != false) {
             // 220: Article retrieved - head and body follow
             conn.write('220 ' + params[1] + "\r\n");
@@ -324,16 +363,16 @@ function Article(conn,sockets,params) {
  * Retrieves and returns only the article headers (not the body)
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client connections to their selected newsgroups
  * @param {Array<string>} params - Command parameters [command, article-id or number]
  */
-function Head(conn,sockets,params) {
+function Head(conn,sessions,params) {
     var Log = LogCommands.extend('head');
-    Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
+    Log('Session info'+' params:'+JSON.stringify(params));
     
     // Check if client has selected a newsgroup
-    if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
-        var article = Driver.LoadArticle(params[1], sockets[conn.remoteAddress + ':' + conn.remotePort])
+    if (getSelectedGroup(sessions, conn)) {
+        var article = Driver.LoadArticle(params[1], getSelectedGroup(sessions, conn))
         if (article != false) {
             // 221: Article retrieved - head follows
             conn.write('221 ' + params[1] + "\r\n");
@@ -454,16 +493,16 @@ function Quit(conn) {
  * Returns only the body of an article (without headers)
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client connections to their selected newsgroups
  * @param {Array<string>} params - Command parameters [command, article-id or number]
  */
-function Body(conn, sockets, params) {
+function Body(conn, sessions, params) {
     var Log = LogCommands.extend('body');
-    Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
+    Log('Session info'+' params:'+JSON.stringify(params));
     
     // Check if client has selected a newsgroup
-    if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
-        var article = Driver.LoadArticle(params[1], sockets[conn.remoteAddress + ':' + conn.remotePort])
+    if (getSelectedGroup(sessions, conn)) {
+        var article = Driver.LoadArticle(params[1], getSelectedGroup(sessions, conn))
         if (article != false) {
             // 222: Article retrieved - body follows
             conn.write('222 ' + params[1] + "\r\n");
@@ -501,16 +540,16 @@ function Body(conn, sockets, params) {
  * Returns the status of an article without retrieving its text
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client connections to their selected newsgroups
  * @param {Array<string>} params - Command parameters [command, article-id or number]
  */
-function Stat(conn, sockets, params) {
+function Stat(conn, sessions, params) {
     var Log = LogCommands.extend('stat');
-    Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
+    Log('Session info'+' params:'+JSON.stringify(params));
     
     // Check if client has selected a newsgroup
-    if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
-        var article = Driver.LoadArticle(params[1], sockets[conn.remoteAddress + ':' + conn.remotePort])
+    if (getSelectedGroup(sessions, conn)) {
+        var article = Driver.LoadArticle(params[1], getSelectedGroup(sessions, conn))
         if (article != false) {
             // 223: Article exists
             conn.write('223 ' + params[1] + "\r\n");
@@ -534,9 +573,9 @@ function Stat(conn, sockets, params) {
  * Move to the next article in the current newsgroup
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client connections to their selected newsgroups
  */
-function Next(conn, sockets) {
+function Next(conn, sessions) {
     var Log = LogCommands.extend('next');
     // Not fully implemented - placeholder
     // 421: No next article in this group
@@ -549,9 +588,9 @@ function Next(conn, sockets) {
  * Move to the previous article in the current newsgroup
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client connections to their selected newsgroups
  */
-function Last(conn, sockets) {
+function Last(conn, sessions) {
     var Log = LogCommands.extend('last');
     // Not fully implemented - placeholder
     // 422: No previous article in this group
@@ -600,9 +639,9 @@ function Newnews(conn, params) {
  * - Path, Reply-To, References, Organization (optional)
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections
+ * @param {Object} sessions - Map of client connections
  */
-function Post(conn, sockets) {
+function Post(conn, sessions) {
     var Log = LogCommands.extend('post');
     
     // Check if posting is enabled in settings
@@ -755,13 +794,13 @@ function Slave(conn) {
  * List article numbers in a newsgroup
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client connections to their selected newsgroups
  * @param {Array<string>} params - Command parameters [command, groupname, range]
  */
-function Listgroup(conn, sockets, params) {
+function Listgroup(conn, sessions, params) {
     var Log = LogCommands.extend('listgroup');
     
-    var groupname = params[1] || sockets[conn.remoteAddress + ':' + conn.remotePort];
+    var groupname = params[1] || getSelectedGroup(sessions, conn);
     
     if (!groupname) {
         // 412: No newsgroup selected
@@ -773,7 +812,7 @@ function Listgroup(conn, sockets, params) {
     
     if (groups[groupname]) {
         // Store selected group for this client
-        sockets[conn.remoteAddress + ':' + conn.remotePort] = groupname;
+        setSelectedGroup(sessions, conn, groupname);
         
         // 211: List of article numbers follows
         conn.write('211 ' + groups[groupname]['high'] + ' 1 ' + groups[groupname]['high'] + ' ' + groupname + "\r\n");
@@ -797,10 +836,10 @@ function Listgroup(conn, sockets, params) {
  * Retrieve specific header fields from articles
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Object} sessions - Map of client connections to their selected newsgroups
  * @param {Array<string>} params - Command parameters [command, header, range]
  */
-function Hdr(conn, sockets, params) {
+function Hdr(conn, sessions, params) {
     var Log = LogCommands.extend('hdr');
     
     if (!Settings.RFC["3977"]) {
@@ -810,7 +849,7 @@ function Hdr(conn, sockets, params) {
     }
     
     // Check if client has selected a newsgroup
-    if (!sockets[conn.remoteAddress + ':' + conn.remotePort]) {
+    if (!getSelectedGroup(sessions, conn)) {
         conn.write(Response.code[412]);
         return;
     }
@@ -867,10 +906,10 @@ function Xgtitle(conn, params) {
  * Search article headers matching a pattern
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections
+ * @param {Object} sessions - Map of client connections
  * @param {Array<string>} params - Command parameters [command, header, range, pattern...]
  */
-function Xpat(conn, sockets, params) {
+function Xpat(conn, sessions, params) {
     var Log = LogCommands.extend('xpat');
     
     if (!Settings.RFC["2980"]) {
@@ -879,7 +918,7 @@ function Xpat(conn, sockets, params) {
         return;
     }
     
-    if (!sockets[conn.remoteAddress + ':' + conn.remotePort]) {
+    if (!getSelectedGroup(sessions, conn)) {
         conn.write(Response.code[412]);
         Log("No newsgroup selected");
         return;
@@ -905,7 +944,7 @@ function Xpat(conn, sockets, params) {
     if (match) {
         const start = parseInt(match[1]);
         const end = parseInt(match[2]);
-        const newsgroup = sockets[conn.remoteAddress + ':' + conn.remotePort];
+        const newsgroup = getSelectedGroup(sessions, conn);
         
         for (let i = start; i <= end; i++) {
             const article = Driver.LoadArticle(i.toString(), newsgroup);
@@ -938,10 +977,10 @@ function Xpat(conn, sockets, params) {
  * Retrieve specific header field from articles
  * 
  * @param {net.Socket} conn - The client connection
- * @param {Object} sockets - Map of client connections
+ * @param {Object} sessions - Map of client connections
  * @param {Array<string>} params - Command parameters [command, header, range]
  */
-function Xhdr(conn, sockets, params) {
+function Xhdr(conn, sessions, params) {
     var Log = LogCommands.extend('xhdr');
     
     if (!Settings.RFC["2980"]) {
@@ -950,7 +989,7 @@ function Xhdr(conn, sockets, params) {
         return;
     }
     
-    if (!sockets[conn.remoteAddress + ':' + conn.remotePort]) {
+    if (!getSelectedGroup(sessions, conn)) {
         conn.write(Response.code[412]);
         Log("No newsgroup selected");
         return;
@@ -976,7 +1015,7 @@ function Xhdr(conn, sockets, params) {
         if (match) {
             const start = parseInt(match[1]);
             const end = parseInt(match[2]);
-            const newsgroup = sockets[conn.remoteAddress + ':' + conn.remotePort];
+            const newsgroup = getSelectedGroup(sessions, conn);
             
             for (let i = start; i <= end; i++) {
                 const article = Driver.LoadArticle(i.toString(), newsgroup);

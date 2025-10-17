@@ -19,8 +19,9 @@ if (fs.existsSync('./settings.json')) {
     Settings = JSON.parse(fs.readFileSync('./settings.json', 'utf8'))
 }
 
-// Store active client connections mapped by their remote address
-var sockets = [];
+// Store active client connections and their session data
+var activeSockets = {};
+var connectionCount = 0;
 
 // Create TCP server and configure connection handler
 var server = net.createServer();
@@ -33,22 +34,65 @@ LogFallback(`Server Created at ${Settings.serveradres}:${Settings.serverport}`);
  * Handle incoming client connections
  * 
  * Sets up event handlers for data, close, and error events on the connection.
- * Sends initial NNTP greeting to client (201 - no posting allowed).
+ * Sends initial NNTP greeting to client.
+ * Enforces connection limits and implements timeout handling.
  * 
  * @param {net.Socket} conn - The client connection socket
  */
 function handleConnection(conn) {
-    conn.setEncoding('utf8');
     var remoteAddress = conn.remoteAddress + ':' + conn.remotePort;
-    LogFallback('new client connection from ' + remoteAddress);
     
-    // Send initial greeting - 201 means server ready but no posting allowed
-    conn.write(Response.code[201]);
+    // Enforce connection limit
+    if (Settings.connectionlimt && connectionCount >= Settings.connectionlimt) {
+        LogFallback(`Connection limit reached, rejecting connection from ${remoteAddress}`);
+        conn.write(Response.code[400]); // Service discontinued
+        conn.end();
+        return;
+    }
     
-    // Set up event handlers
-    conn.on('data', onData);
-    conn.once('close', onClose);
-    conn.on('error', onError);
+    connectionCount++;
+    conn.setEncoding('utf8');
+    LogFallback(`new client connection from ${remoteAddress} (${connectionCount}/${Settings.connectionlimt || 'unlimited'})`);
+    
+    // Initialize session data for this connection
+    activeSockets[remoteAddress] = {
+        socket: conn,
+        selectedGroup: null,
+        currentArticle: null,
+        connectedAt: Date.now(),
+        lastActivity: Date.now()
+    };
+    
+    // Send initial greeting based on posting capability
+    // 200 if posting allowed, 201 if not
+    if (Settings.posting) {
+        conn.write(Response.code[200]);
+    } else {
+        conn.write(Response.code[201]);
+    }
+    
+    // Set idle timeout (10 minutes default)
+    const IDLE_TIMEOUT = 10 * 60 * 1000;
+    var idleTimer = setTimeout(() => {
+        LogFallback(`Connection ${remoteAddress} idle timeout`);
+        conn.write("400 Idle timeout, closing connection\r\n");
+        conn.end();
+    }, IDLE_TIMEOUT);
+    
+    /**
+     * Reset idle timer on activity
+     */
+    function resetIdleTimer() {
+        if (activeSockets[remoteAddress]) {
+            activeSockets[remoteAddress].lastActivity = Date.now();
+        }
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+            LogFallback(`Connection ${remoteAddress} idle timeout`);
+            conn.write("400 Idle timeout, closing connection\r\n");
+            conn.end();
+        }, IDLE_TIMEOUT);
+    }
     
     /**
      * Handle incoming data from client
@@ -57,17 +101,22 @@ function handleConnection(conn) {
      * @param {string} d - Raw data received from client
      */
     function onData(d) {
+        resetIdleTimer();
         LogClientData(d.replace("\r\n", ""));
         
         // Parse command and arguments (space-separated)
         var temp = d.replace("\r\n", "").split(" ");
+        var command = temp[0].toUpperCase();
 
         // Validate command is recognized
-        if (!Commands.ValidCommands().includes(temp[0])) {
+        if (!Commands.ValidCommands().includes(command)) {
+            conn.write(Response.code[500]); // Command not recognized
+            LogFallback(`Unknown command from ${remoteAddress}: ${command}`);
+            return;
         }
         
         // Dispatch to appropriate command handler
-        switch (temp[0]) {
+        switch (command) {
             case "CAPABILITIES":
                 Commands.Capabilities(conn);
                 break;
@@ -75,44 +124,45 @@ function handleConnection(conn) {
                 Commands.Mode(conn, temp[1]);
                 break;
             case "LIST":
-                Commands.List(conn, sockets, temp);
+                Commands.List(conn, activeSockets, temp);
                 break;
             case "LISTGROUP":
-                Commands.Listgroup(conn, sockets, temp);
+                Commands.Listgroup(conn, activeSockets, temp);
                 break;
             case "GROUP":
-                Commands.Group(conn, sockets, temp);
+                Commands.Group(conn, activeSockets, temp);
                 break;
             case "DATE":
                 Commands.DateCommand(conn);
                 break;
             case "OVER":
             case "XOVER":
-                Commands.Xover(conn, sockets, temp);
+                Commands.Xover(conn, activeSockets, temp);
                 break;
             case "ARTICLE":
-                Commands.Article(conn, sockets, temp);
+                Commands.Article(conn, activeSockets, temp);
                 break;
             case "HEAD":
-                Commands.Head(conn, sockets, temp);
+                Commands.Head(conn, activeSockets, temp);
                 break;
             case "BODY":
-                Commands.Body(conn, sockets, temp);
+                Commands.Body(conn, activeSockets, temp);
                 break;
             case "STAT":
-                Commands.Stat(conn, sockets, temp);
+                Commands.Stat(conn, activeSockets, temp);
                 break;
             case "HELP":
                 Commands.Help(conn);
                 break;
             case "QUIT":
                 Commands.Quit(conn);
+                // QUIT command will close the connection
                 break;
             case "NEXT":
-                Commands.Next(conn, sockets);
+                Commands.Next(conn, activeSockets);
                 break;
             case "LAST":
-                Commands.Last(conn, sockets);
+                Commands.Last(conn, activeSockets);
                 break;
             case "NEWGROUPS":
                 Commands.Newgroups(conn, temp);
@@ -121,7 +171,7 @@ function handleConnection(conn) {
                 Commands.Newnews(conn, temp);
                 break;
             case "POST":
-                Commands.Post(conn, sockets);
+                Commands.Post(conn, activeSockets);
                 break;
             case "IHAVE":
                 Commands.Ihave(conn, temp);
@@ -130,27 +180,38 @@ function handleConnection(conn) {
                 Commands.Slave(conn);
                 break;
             case "HDR":
-                Commands.Hdr(conn, sockets, temp);
+                Commands.Hdr(conn, activeSockets, temp);
                 break;
             case "XGTITLE":
                 Commands.Xgtitle(conn, temp);
                 break;
             case "XPAT":
-                Commands.Xpat(conn, sockets, temp);
+                Commands.Xpat(conn, activeSockets, temp);
                 break;
             case "XHDR":
-                Commands.Xhdr(conn, sockets, temp);
+                Commands.Xhdr(conn, activeSockets, temp);
                 break;
             default:
+                // Should not reach here due to validation above
+                conn.write(Response.code[500]);
                 break;
         }
     }
 
     /**
      * Handle connection close event
+     * Clean up session data and update connection count
      */
     function onClose() {
-        LogFallback(`connection from ${remoteAddress} closed`);
+        clearTimeout(idleTimer);
+        
+        // Clean up session data
+        if (activeSockets[remoteAddress]) {
+            delete activeSockets[remoteAddress];
+        }
+        
+        connectionCount--;
+        LogFallback(`connection from ${remoteAddress} closed (${connectionCount}/${Settings.connectionlimt || 'unlimited'} active)`);
     }
 
     /**
@@ -160,7 +221,18 @@ function handleConnection(conn) {
      */
     function onError(err) {
         LogFallback(`Connection ${remoteAddress} error: ${err.message}`);
+        
+        // Clean up on error
+        clearTimeout(idleTimer);
+        if (activeSockets[remoteAddress]) {
+            delete activeSockets[remoteAddress];
+        }
     }
+    
+    // Set up event handlers
+    conn.on('data', onData);
+    conn.once('close', onClose);
+    conn.on('error', onError);
 }
 
 /**
@@ -175,3 +247,31 @@ function LogFallback(params) {
         console.log("[s] " + params);
     }
 }
+
+/**
+ * Graceful shutdown handler
+ */
+process.on('SIGINT', () => {
+    LogFallback('Received SIGINT, shutting down gracefully...');
+    
+    // Close all active connections
+    Object.keys(activeSockets).forEach(addr => {
+        const session = activeSockets[addr];
+        if (session && session.socket) {
+            session.socket.write(Response.code[400]); // Service discontinued
+            session.socket.end();
+        }
+    });
+    
+    // Close the server
+    server.close(() => {
+        LogFallback('Server shut down');
+        process.exit(0);
+    });
+    
+    // Force exit after 5 seconds if graceful shutdown fails
+    setTimeout(() => {
+        LogFallback('Forcing shutdown...');
+        process.exit(1);
+    }, 5000);
+});
