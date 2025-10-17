@@ -102,10 +102,13 @@ function handleConnection(conn) {
      */
     function onData(d) {
         resetIdleTimer();
-        LogClientData(d.replace("\r\n", ""));
+        
+        // Remove all variations of line endings and trim whitespace
+        var cleanData = d.replace(/\r\n|\r|\n/g, '').trim();
+        LogClientData(cleanData);
         
         // Parse command and arguments (space-separated)
-        var temp = d.replace("\r\n", "").split(" ");
+        var temp = cleanData.split(/\s+/); // Split on any whitespace
         var command = temp[0].toUpperCase();
 
         // Validate command is recognized
