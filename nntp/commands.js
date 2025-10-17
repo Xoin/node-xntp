@@ -35,11 +35,24 @@ module.exports = {
     Mode,
     Capabilities,
     Article,
+    Body,
+    Head,
+    Stat,
     List,
     Group,
     Date,
     Xover,
-    Head
+    Help,
+    Quit,
+    Next,
+    Last,
+    Newgroups,
+    Newnews,
+    Post,
+    Ihave,
+    Slave,
+    Listgroup,
+    Hdr
 };
 
 /**
@@ -126,13 +139,23 @@ function Group(conn, sockets, params) {
 
 /**
  * Handle DATE command
- * Returns the current server date and time
+ * Returns the current server date and time in RFC 3977 format (YYYYMMDDHHMMSS)
  * 
  * @param {net.Socket} conn - The client connection
  */
-function Date() {
+function Date(conn) {
+    var Log = LogCommands.extend('date');
+    // Get current date and format as YYYYMMDDHHMMSS
+    var now = new Date();
+    var dateStr = now.getUTCFullYear() + 
+                  String(now.getUTCMonth() + 1).padStart(2, '0') +
+                  String(now.getUTCDate()).padStart(2, '0') +
+                  String(now.getUTCHours()).padStart(2, '0') +
+                  String(now.getUTCMinutes()).padStart(2, '0') +
+                  String(now.getUTCSeconds()).padStart(2, '0');
     // 111: Server date and time
-    conn.write("111 " + Driver.ConvertDates(Date()) + "  Server date and time\r\n.\r\n");
+    conn.write("111 " + dateStr + "\r\n");
+    Log("111 " + dateStr);
 }
 
 /**
@@ -192,11 +215,11 @@ function Article(conn,sockets,params) {
     
     // Check if client has selected a newsgroup
     if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
-        var article = Driver.LoadArticle(d, sockets[conn.remoteAddress + ':' + conn.remotePort])
+        var article = Driver.LoadArticle(params[1], sockets[conn.remoteAddress + ':' + conn.remotePort])
         if (article != false) {
             // 220: Article retrieved - head and body follow
-            conn.write('220' + params[0] + "\r\n");
-            conn.write(article + "\r\n");
+            conn.write('220 ' + params[1] + "\r\n");
+            conn.write(article);
             Log(article);
             conn.write(".\r\n");
         }
@@ -205,6 +228,11 @@ function Article(conn,sockets,params) {
             Log(Response.code[430])
             conn.write(Response.code[430]);
         }
+    }
+    else {
+        // 412: No newsgroup selected
+        Log(Response.code[412])
+        conn.write(Response.code[412]);
     }
 }
 
@@ -222,33 +250,34 @@ function Head(conn,sockets,params) {
     
     // Check if client has selected a newsgroup
     if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
-        var article = Driver.LoadArticle(d, sockets[conn.remoteAddress + ':' + conn.remotePort])
+        var article = Driver.LoadArticle(params[1], sockets[conn.remoteAddress + ':' + conn.remotePort])
         if (article != false) {
-            var fine = true;
-            // 220: Article retrieved - head follows
-            conn.write('220' + params[0] + "\r\n")
+            // 221: Article retrieved - head follows
+            conn.write('221 ' + params[1] + "\r\n");
             
-            // Parse article and send only headers (stop at Message-ID)
-            article.split('\r\n').forEach(element => {
-                if (fine = true) {
-                    if (element.includes('Message-ID:')) {
-                        fine = false
-                    }
-                    else {
-                        conn.write(element + "\r\n")
-                    }
-
+            // Parse article and send only headers (stop at blank line separating headers from body)
+            var lines = article.split('\r\n');
+            for (var i = 0; i < lines.length; i++) {
+                if (lines[i] === '') {
+                    // Empty line marks end of headers
+                    break;
                 }
-
-            });
-            Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
-            conn.write(".\r\n")
+                conn.write(lines[i] + "\r\n");
+            }
+            
+            Log('Headers sent for article: '+params[1]);
+            conn.write(".\r\n");
         }
         else {
             // 430: No such article found
             Log(Response.code[430]);
             conn.write(Response.code[430])
         }
+    }
+    else {
+        // 412: No newsgroup selected
+        Log(Response.code[412]);
+        conn.write(Response.code[412]);
     }
 }
 
@@ -260,10 +289,324 @@ function Head(conn,sockets,params) {
  */
 function Capabilities(conn) {
     var Log = LogCommands.extend('capabilities');
-    Log(`${Response.code[101]} ${ValidCommands().join("\r\n")} \r\n.\r\n`);
+    
     // 101: Capability list follows
-    conn.write(`${Response.code[101]} ${ValidCommands().join("\r\n")} \r\n.\r\n`);
+    conn.write(Response.code[101]);
+    
+    // Report version based on RFC mode
+    if (Settings.RFC["3977"]) {
+        conn.write("VERSION 2\r\n");
+    } else {
+        conn.write("VERSION 1\r\n");
+    }
+    
+    // Report implementation details
+    conn.write("IMPLEMENTATION node-xntp\r\n");
+    
+    // Report supported commands based on RFC mode
+    conn.write("READER\r\n");
+    
+    // RFC 3977 specific capabilities
+    if (Settings.RFC["3977"]) {
+        conn.write("HDR\r\n");
+        conn.write("OVER\r\n");
+        conn.write("LIST ACTIVE NEWSGROUPS OVERVIEW.FMT\r\n");
+    }
+    
+    // RFC 977 capabilities
+    if (Settings.RFC["977"]) {
+        conn.write("XOVER\r\n");
+    }
+    
+    conn.write(".\r\n");
+    Log("Capabilities sent");
+}
 
+/**
+ * Handle HELP command
+ * Returns a list of available commands
+ * 
+ * @param {net.Socket} conn - The client connection
+ */
+function Help(conn) {
+    var Log = LogCommands.extend('help');
+    // 100: Help text follows
+    conn.write(Response.code[100]);
+    conn.write("Supported commands:\r\n");
+    ValidCommands().forEach(cmd => {
+        conn.write("  " + cmd + "\r\n");
+    });
+    conn.write(".\r\n");
+    Log("Help sent");
+}
+
+/**
+ * Handle QUIT command
+ * Close the connection gracefully
+ * 
+ * @param {net.Socket} conn - The client connection
+ */
+function Quit(conn) {
+    var Log = LogCommands.extend('quit');
+    // 205: Closing connection
+    conn.write(Response.code[205]);
+    Log("Connection closed");
+    conn.end();
+}
+
+/**
+ * Handle BODY command
+ * Returns only the body of an article (without headers)
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Array<string>} params - Command parameters [command, article-id or number]
+ */
+function Body(conn, sockets, params) {
+    var Log = LogCommands.extend('body');
+    Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
+    
+    // Check if client has selected a newsgroup
+    if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
+        var article = Driver.LoadArticle(params[1], sockets[conn.remoteAddress + ':' + conn.remotePort])
+        if (article != false) {
+            // 222: Article retrieved - body follows
+            conn.write('222 ' + params[1] + "\r\n");
+            
+            // Parse article and send only body (skip headers)
+            var lines = article.split('\r\n');
+            var inBody = false;
+            for (var i = 0; i < lines.length; i++) {
+                if (inBody) {
+                    conn.write(lines[i] + "\r\n");
+                } else if (lines[i] === '') {
+                    // Empty line marks start of body
+                    inBody = true;
+                }
+            }
+            
+            Log('Body sent for article: '+params[1]);
+            conn.write(".\r\n");
+        }
+        else {
+            // 430: No such article found
+            Log(Response.code[430]);
+            conn.write(Response.code[430]);
+        }
+    }
+    else {
+        // 412: No newsgroup selected
+        Log(Response.code[412]);
+        conn.write(Response.code[412]);
+    }
+}
+
+/**
+ * Handle STAT command
+ * Returns the status of an article without retrieving its text
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Array<string>} params - Command parameters [command, article-id or number]
+ */
+function Stat(conn, sockets, params) {
+    var Log = LogCommands.extend('stat');
+    Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
+    
+    // Check if client has selected a newsgroup
+    if (sockets[conn.remoteAddress + ':' + conn.remotePort]) {
+        var article = Driver.LoadArticle(params[1], sockets[conn.remoteAddress + ':' + conn.remotePort])
+        if (article != false) {
+            // 223: Article exists
+            conn.write('223 ' + params[1] + "\r\n");
+            Log('Article exists: '+params[1]);
+        }
+        else {
+            // 430: No such article found
+            Log(Response.code[430]);
+            conn.write(Response.code[430]);
+        }
+    }
+    else {
+        // 412: No newsgroup selected
+        Log(Response.code[412]);
+        conn.write(Response.code[412]);
+    }
+}
+
+/**
+ * Handle NEXT command
+ * Move to the next article in the current newsgroup
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Object} sockets - Map of client connections to their selected newsgroups
+ */
+function Next(conn, sockets) {
+    var Log = LogCommands.extend('next');
+    // Not fully implemented - placeholder
+    // 421: No next article in this group
+    conn.write(Response.code[421]);
+    Log("NEXT command not fully implemented");
+}
+
+/**
+ * Handle LAST command
+ * Move to the previous article in the current newsgroup
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Object} sockets - Map of client connections to their selected newsgroups
+ */
+function Last(conn, sockets) {
+    var Log = LogCommands.extend('last');
+    // Not fully implemented - placeholder
+    // 422: No previous article in this group
+    conn.write(Response.code[422]);
+    Log("LAST command not fully implemented");
+}
+
+/**
+ * Handle NEWGROUPS command
+ * List new newsgroups created since a specified date
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Array<string>} params - Command parameters [command, date, time, GMT]
+ */
+function Newgroups(conn, params) {
+    var Log = LogCommands.extend('newgroups');
+    // 231: List of new newsgroups follows
+    conn.write(Response.code[231]);
+    // Not fully implemented - no new groups to report
+    conn.write(".\r\n");
+    Log("NEWGROUPS command - no new groups");
+}
+
+/**
+ * Handle NEWNEWS command
+ * List new articles since a specified date
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Array<string>} params - Command parameters [command, newsgroups, date, time, GMT]
+ */
+function Newnews(conn, params) {
+    var Log = LogCommands.extend('newnews');
+    // 230: List of new articles follows
+    conn.write(Response.code[230]);
+    // Not fully implemented - no new articles to report
+    conn.write(".\r\n");
+    Log("NEWNEWS command - no new articles");
+}
+
+/**
+ * Handle POST command
+ * Accept an article to be posted
+ * 
+ * @param {net.Socket} conn - The client connection
+ */
+function Post(conn) {
+    var Log = LogCommands.extend('post');
+    // 440: Posting not allowed
+    conn.write(Response.code[440]);
+    Log("POST command - posting not allowed");
+}
+
+/**
+ * Handle IHAVE command
+ * Offer an article for transfer (server-to-server)
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Array<string>} params - Command parameters [command, message-id]
+ */
+function Ihave(conn, params) {
+    var Log = LogCommands.extend('ihave');
+    // 435: Article not wanted
+    conn.write(Response.code[435]);
+    Log("IHAVE command - article not wanted");
+}
+
+/**
+ * Handle SLAVE command (RFC 977)
+ * Indicates client is a slave server
+ * 
+ * @param {net.Socket} conn - The client connection
+ */
+function Slave(conn) {
+    var Log = LogCommands.extend('slave');
+    // 202: Slave status noted
+    conn.write(Response.code[202]);
+    Log("SLAVE command acknowledged");
+}
+
+/**
+ * Handle LISTGROUP command
+ * List article numbers in a newsgroup
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Array<string>} params - Command parameters [command, groupname, range]
+ */
+function Listgroup(conn, sockets, params) {
+    var Log = LogCommands.extend('listgroup');
+    
+    var groupname = params[1] || sockets[conn.remoteAddress + ':' + conn.remotePort];
+    
+    if (!groupname) {
+        // 412: No newsgroup selected
+        conn.write(Response.code[412]);
+        return;
+    }
+    
+    groups = Driver.LoadGroups();
+    
+    if (groups[groupname]) {
+        // Store selected group for this client
+        sockets[conn.remoteAddress + ':' + conn.remotePort] = groupname;
+        
+        // 211: List of article numbers follows
+        conn.write('211 ' + groups[groupname]['high'] + ' 1 ' + groups[groupname]['high'] + ' ' + groupname + "\r\n");
+        
+        // List article numbers
+        for (var i = 1; i <= groups[groupname]['high']; i++) {
+            conn.write(i + "\r\n");
+        }
+        conn.write(".\r\n");
+        Log("LISTGROUP for " + groupname);
+    }
+    else {
+        // 411: No such newsgroup
+        conn.write(Response.code[411]);
+        Log("LISTGROUP - group not found: " + groupname);
+    }
+}
+
+/**
+ * Handle HDR command (RFC 3977)
+ * Retrieve specific header fields from articles
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Object} sockets - Map of client connections to their selected newsgroups
+ * @param {Array<string>} params - Command parameters [command, header, range]
+ */
+function Hdr(conn, sockets, params) {
+    var Log = LogCommands.extend('hdr');
+    
+    if (!Settings.RFC["3977"]) {
+        // Command not available in RFC 977 mode
+        conn.write(Response.code[500]);
+        return;
+    }
+    
+    // Check if client has selected a newsgroup
+    if (!sockets[conn.remoteAddress + ':' + conn.remotePort]) {
+        conn.write(Response.code[412]);
+        return;
+    }
+    
+    // 225: Headers follow (RFC 3977)
+    conn.write("225 Headers follow\r\n");
+    
+    // Not fully implemented - placeholder
+    conn.write(".\r\n");
+    Log("HDR command - not fully implemented");
 }
 
 /**

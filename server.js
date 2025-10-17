@@ -77,6 +77,9 @@ function handleConnection(conn) {
             case "LIST":
                 Commands.List(conn, sockets);
                 break;
+            case "LISTGROUP":
+                Commands.Listgroup(conn, sockets, temp);
+                break;
             case "GROUP":
                 Commands.Group(conn, sockets, temp);
                 break;
@@ -92,6 +95,42 @@ function handleConnection(conn) {
                 break;
             case "HEAD":
                 Commands.Head(conn, sockets, temp);
+                break;
+            case "BODY":
+                Commands.Body(conn, sockets, temp);
+                break;
+            case "STAT":
+                Commands.Stat(conn, sockets, temp);
+                break;
+            case "HELP":
+                Commands.Help(conn);
+                break;
+            case "QUIT":
+                Commands.Quit(conn);
+                break;
+            case "NEXT":
+                Commands.Next(conn, sockets);
+                break;
+            case "LAST":
+                Commands.Last(conn, sockets);
+                break;
+            case "NEWGROUPS":
+                Commands.Newgroups(conn, temp);
+                break;
+            case "NEWNEWS":
+                Commands.Newnews(conn, temp);
+                break;
+            case "POST":
+                Commands.Post(conn);
+                break;
+            case "IHAVE":
+                Commands.Ihave(conn, temp);
+                break;
+            case "SLAVE":
+                Commands.Slave(conn);
+                break;
+            case "HDR":
+                Commands.Hdr(conn, sockets, temp);
                 break;
             default:
                 break;
