@@ -1,0 +1,16 @@
+Path: testserver!test-group
+From: moderator@example.com
+Newsgroups: test-group.testserver
+Subject: Welcome to test-group
+Message-ID: <3@test-group.testserver>
+Date: Mon, 01 Jan 2024 10:00:00 +0000
+Lines: 5
+
+Welcome to the test newsgroup!
+
+This article can be used to test various NNTP commands including:
+- ARTICLE (retrieve full article with headers and body)
+- HEAD (retrieve only headers)
+- BODY (retrieve only the body text)
+- STAT (check if article exists)
+- HDR (retrieve specific header fields)
