@@ -1,0 +1,11 @@
+Path: testserver!test-group
+From: test.user@example.com
+Newsgroups: test-group.testserver
+Subject: Test Article 1
+Message-ID: <1@test-group.testserver>
+Date: Mon, 01 Jan 2024 12:00:00 +0000
+Lines: 3
+
+This is the first test article.
+It has multiple lines of content.
+You can use this to test ARTICLE, HEAD, BODY, and STAT commands.

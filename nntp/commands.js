@@ -193,25 +193,24 @@ function Group(conn, sockets, params) {
     Log('Socket: '+JSON.stringify(sockets)+' params:'+JSON.stringify(params));
     groups = Driver.LoadGroups();
     
-    if (params.length == 2) {
-        // Store selected group for this client
-        sockets[conn.remoteAddress + ':' + conn.remotePort] = params[1];
-        // Response: 211 high low high groupname
-        conn.write('211 ' + groups[params[1]]['high'] + ' 1 ' + groups[params[1]]['high'] + ' ' + params[1] + "\r\n");
-        return;
+    if (params.length >= 2) {
+        var groupname = params[1];
+        
+        // Check if group exists
+        if (groups[groupname]) {
+            // Store selected group for this client
+            sockets[conn.remoteAddress + ':' + conn.remotePort] = groupname;
+            // Response: 211 count low high groupname
+            conn.write('211 ' + groups[groupname]['high'] + ' ' + groups[groupname]['low'] + ' ' + groups[groupname]['high'] + ' ' + groupname + "\r\n");
+        } else {
+            // 411: No such newsgroup
+            conn.write('411 ' + groupname + ' is unknown\r\n');
+        }
+    } else {
+        // 501: Syntax error
+        conn.write(Response.code[501]);
     }
-    
-    // Check if group exists
-    if (!groups.indexOf(params[1])) {
-        sockets[conn.remoteAddress + ':' + conn.remotePort] = params[1];
-        conn.write('211 ' + groups[params[1]]['high'] + ' ' + groups[params[1]]['low'] + ' ' + groups[params[1]]['high'] + ' ' + params[1] + "\r\n");
-    }
-    else {
-        // 411: No such newsgroup
-        conn.write('411 ' + params[1] + ' is unknown')
-    }
-    Log(Done)
-    conn.write(".\r\n");
+    Log('Group command completed');
 }
 
 /**

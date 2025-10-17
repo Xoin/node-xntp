@@ -107,6 +107,39 @@ Or with debug logging:
 DEBUG=* node server.js
 ```
 
+## Testing
+
+Test data is included in the `data/` directory with a sample newsgroup `test-group.testserver` containing 3 articles.
+
+### Run the test suite:
+
+```bash
+node test-commands.js
+```
+
+### Manual testing with netcat or telnet:
+
+```bash
+nc localhost 5555
+
+# Then enter commands:
+CAPABILITIES
+MODE READER
+LIST
+GROUP test-group.testserver
+LISTGROUP test-group.testserver
+ARTICLE 1
+HEAD 2
+BODY 3
+STAT 1
+XOVER 1-3
+DATE
+HELP
+QUIT
+```
+
+See `data/README.md` for information about the test data structure and how to add more test articles.
+
 ## License
 
 See LICENSE file for details.

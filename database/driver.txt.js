@@ -44,7 +44,8 @@ function LoadGroups() {
  * @returns {string|boolean} Article content as string, or false if not found
  */
 function LoadArticle(request, newsgroup) {
-    LogDriver(request + ' ' + newsgroup).extend('LoadArticle')
+    var Log = LogDriver.extend('LoadArticle');
+    Log(request + ' ' + newsgroup);
     
     // Parse message-id format: <123@group-name.server-name>
     const regex = /(<([0-9]+)@([a-z\-]+).([a-z\-]+)>|[0-9]+)/gm;
