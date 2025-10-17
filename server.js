@@ -121,7 +121,7 @@ function handleConnection(conn) {
                 Commands.Newnews(conn, temp);
                 break;
             case "POST":
-                Commands.Post(conn);
+                Commands.Post(conn, sockets);
                 break;
             case "IHAVE":
                 Commands.Ihave(conn, temp);
@@ -131,6 +131,15 @@ function handleConnection(conn) {
                 break;
             case "HDR":
                 Commands.Hdr(conn, sockets, temp);
+                break;
+            case "XGTITLE":
+                Commands.Xgtitle(conn, temp);
+                break;
+            case "XPAT":
+                Commands.Xpat(conn, sockets, temp);
+                break;
+            case "XHDR":
+                Commands.Xhdr(conn, sockets, temp);
                 break;
             default:
                 break;

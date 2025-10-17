@@ -5,9 +5,10 @@
     "serverversion":"",
     "driver":"txt",
     "connectionlimt":4,
+    "posting":false,
     "RFC":{
         "977":true,
-        "2980":false,
+        "2980":true,
         "3977":true,
         "4642":false,
         "4643":false,

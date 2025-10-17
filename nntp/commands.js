@@ -52,7 +52,10 @@ module.exports = {
     Ihave,
     Slave,
     Listgroup,
-    Hdr
+    Hdr,
+    Xgtitle,
+    Xpat,
+    Xhdr
 };
 
 /**
@@ -398,6 +401,18 @@ function Capabilities(conn) {
         conn.write("XOVER\r\n");
     }
     
+    // RFC 2980 extensions
+    if (Settings.RFC["2980"]) {
+        conn.write("XGTITLE\r\n");
+        conn.write("XHDR\r\n");
+        conn.write("XPAT\r\n");
+    }
+    
+    // Report posting capability (RFC 850)
+    if (Settings.posting) {
+        conn.write("POST\r\n");
+    }
+    
     conn.write(".\r\n");
     Log("Capabilities sent");
 }
@@ -578,15 +593,134 @@ function Newnews(conn, params) {
 
 /**
  * Handle POST command
- * Accept an article to be posted
+ * Accept an article to be posted (RFC 850/977/3977)
+ * 
+ * Supports RFC 850 message format with headers:
+ * - From, Date, Newsgroups, Subject, Message-ID (required)
+ * - Path, Reply-To, References, Organization (optional)
  * 
  * @param {net.Socket} conn - The client connection
+ * @param {Object} sockets - Map of client connections
  */
-function Post(conn) {
+function Post(conn, sockets) {
     var Log = LogCommands.extend('post');
-    // 440: Posting not allowed
-    conn.write(Response.code[440]);
-    Log("POST command - posting not allowed");
+    
+    // Check if posting is enabled in settings
+    if (!Settings.posting || Settings.posting === false) {
+        // 440: Posting not allowed
+        conn.write(Response.code[440]);
+        Log("POST command - posting not allowed by configuration");
+        return;
+    }
+    
+    // 340: Send article to be posted
+    conn.write(Response.code[340]);
+    Log("POST command - ready to receive article");
+    
+    let articleData = '';
+    let isReceiving = true;
+    
+    const postDataHandler = (data) => {
+        if (!isReceiving) return;
+        
+        articleData += data.toString();
+        
+        // Check for end of article marker (.\r\n on a line by itself)
+        if (articleData.includes('\r\n.\r\n')) {
+            isReceiving = false;
+            conn.removeListener('data', postDataHandler);
+            
+            // Remove the end marker
+            articleData = articleData.substring(0, articleData.indexOf('\r\n.\r\n'));
+            
+            // Validate and process the article (RFC 850 format)
+            const result = validateAndStoreArticle(articleData, conn);
+            
+            if (result.success) {
+                // 240: Article posted ok
+                conn.write(Response.code[240]);
+                Log("Article posted successfully: " + result.messageId);
+            } else {
+                // 441: Posting failed
+                conn.write("441 Posting failed: " + result.error + "\r\n");
+                Log("Posting failed: " + result.error);
+            }
+        }
+    };
+    
+    conn.on('data', postDataHandler);
+}
+
+/**
+ * Validate and store posted article (RFC 850 format)
+ * 
+ * @param {string} articleData - The article data
+ * @param {net.Socket} conn - The client connection
+ * @returns {Object} Result with success flag and message
+ */
+function validateAndStoreArticle(articleData, conn) {
+    try {
+        const lines = articleData.split('\r\n');
+        const headers = {};
+        let bodyStart = 0;
+        
+        // Parse headers (RFC 850 format)
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i] === '') {
+                bodyStart = i + 1;
+                break;
+            }
+            
+            const colonPos = lines[i].indexOf(':');
+            if (colonPos > 0) {
+                const headerName = lines[i].substring(0, colonPos).trim();
+                const headerValue = lines[i].substring(colonPos + 1).trim();
+                headers[headerName.toLowerCase()] = headerValue;
+            }
+        }
+        
+        // Validate required RFC 850 headers
+        const requiredHeaders = ['from', 'newsgroups', 'subject'];
+        for (const header of requiredHeaders) {
+            if (!headers[header]) {
+                return { success: false, error: `Missing required header: ${header}` };
+            }
+        }
+        
+        // Generate Message-ID if not provided
+        if (!headers['message-id']) {
+            const timestamp = Date.now();
+            const randomPart = Math.random().toString(36).substring(2, 15);
+            headers['message-id'] = `<${timestamp}.${randomPart}@${Settings.servername || 'localhost'}>`;
+        }
+        
+        // Add Path header if not present (RFC 850)
+        if (!headers['path']) {
+            headers['path'] = Settings.servername || 'localhost';
+        }
+        
+        // Add Date if not present
+        if (!headers['date']) {
+            headers['date'] = new Date().toUTCString();
+        }
+        
+        // Store article using driver (if implemented)
+        if (Driver.StoreArticle) {
+            const body = lines.slice(bodyStart).join('\r\n');
+            Driver.StoreArticle(headers, body);
+        }
+        
+        return { 
+            success: true, 
+            messageId: headers['message-id'] 
+        };
+        
+    } catch (err) {
+        return { 
+            success: false, 
+            error: err.message 
+        };
+    }
 }
 
 /**
@@ -687,6 +821,181 @@ function Hdr(conn, sockets, params) {
     // Not fully implemented - placeholder
     conn.write(".\r\n");
     Log("HDR command - not fully implemented");
+}
+
+/**
+ * Handle XGTITLE command (RFC 2980)
+ * Retrieve newsgroup descriptions/titles
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Array<string>} params - Command parameters [command, wildmat]
+ */
+function Xgtitle(conn, params) {
+    var Log = LogCommands.extend('xgtitle');
+    
+    if (!Settings.RFC["2980"]) {
+        conn.write(Response.code[500]);
+        Log("XGTITLE not available - RFC 2980 not enabled");
+        return;
+    }
+    
+    // 282: List of newsgroup descriptions follows
+    conn.write("282 List of newsgroup descriptions follows\r\n");
+    
+    const wildmat = params[1] || '*';
+    const groups = Driver.LoadGroups();
+    
+    Object.keys(groups).forEach(groupname => {
+        if (!groups[groupname].high || !groups[groupname].low) {
+            return; // Skip non-group entries
+        }
+        
+        // Simple wildmat matching (basic implementation)
+        if (wildmat === '*' || groupname.includes(wildmat.replace('*', ''))) {
+            // Format: groupname description
+            const description = groups[groupname].description || `${groupname} newsgroup`;
+            conn.write(`${groupname} ${description}\r\n`);
+        }
+    });
+    
+    conn.write(".\r\n");
+    Log("XGTITLE command completed");
+}
+
+/**
+ * Handle XPAT command (RFC 2980)
+ * Search article headers matching a pattern
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Object} sockets - Map of client connections
+ * @param {Array<string>} params - Command parameters [command, header, range, pattern...]
+ */
+function Xpat(conn, sockets, params) {
+    var Log = LogCommands.extend('xpat');
+    
+    if (!Settings.RFC["2980"]) {
+        conn.write(Response.code[500]);
+        Log("XPAT not available - RFC 2980 not enabled");
+        return;
+    }
+    
+    if (!sockets[conn.remoteAddress + ':' + conn.remotePort]) {
+        conn.write(Response.code[412]);
+        Log("No newsgroup selected");
+        return;
+    }
+    
+    if (params.length < 4) {
+        conn.write(Response.code[501]);
+        Log("Invalid XPAT syntax");
+        return;
+    }
+    
+    const headerField = params[1];
+    const range = params[2];
+    const patterns = params.slice(3);
+    
+    // 221: Header follows (using this for XPAT response)
+    conn.write("221 Headers follow\r\n");
+    
+    // Parse range
+    const regex = /([0-9]+)-([0-9]+)/;
+    const match = regex.exec(range);
+    
+    if (match) {
+        const start = parseInt(match[1]);
+        const end = parseInt(match[2]);
+        const newsgroup = sockets[conn.remoteAddress + ':' + conn.remotePort];
+        
+        for (let i = start; i <= end; i++) {
+            const article = Driver.LoadArticle(i.toString(), newsgroup);
+            if (article) {
+                // Simple pattern matching in headers
+                const lines = article.split('\r\n');
+                for (const line of lines) {
+                    if (line.toLowerCase().startsWith(headerField.toLowerCase() + ':')) {
+                        const value = line.substring(line.indexOf(':') + 1).trim();
+                        // Check if any pattern matches
+                        for (const pattern of patterns) {
+                            if (value.includes(pattern.replace(/\*/g, ''))) {
+                                conn.write(`${i} ${value}\r\n`);
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    conn.write(".\r\n");
+    Log("XPAT command completed");
+}
+
+/**
+ * Handle XHDR command (RFC 2980)
+ * Retrieve specific header field from articles
+ * 
+ * @param {net.Socket} conn - The client connection
+ * @param {Object} sockets - Map of client connections
+ * @param {Array<string>} params - Command parameters [command, header, range]
+ */
+function Xhdr(conn, sockets, params) {
+    var Log = LogCommands.extend('xhdr');
+    
+    if (!Settings.RFC["2980"]) {
+        conn.write(Response.code[500]);
+        Log("XHDR not available - RFC 2980 not enabled");
+        return;
+    }
+    
+    if (!sockets[conn.remoteAddress + ':' + conn.remotePort]) {
+        conn.write(Response.code[412]);
+        Log("No newsgroup selected");
+        return;
+    }
+    
+    if (params.length < 2) {
+        conn.write(Response.code[501]);
+        Log("Invalid XHDR syntax");
+        return;
+    }
+    
+    const headerField = params[1];
+    const range = params[2] || '';
+    
+    // 221: Header follows
+    conn.write("221 Header follows\r\n");
+    
+    if (range) {
+        // Parse range
+        const regex = /([0-9]+)-([0-9]+)/;
+        const match = regex.exec(range);
+        
+        if (match) {
+            const start = parseInt(match[1]);
+            const end = parseInt(match[2]);
+            const newsgroup = sockets[conn.remoteAddress + ':' + conn.remotePort];
+            
+            for (let i = start; i <= end; i++) {
+                const article = Driver.LoadArticle(i.toString(), newsgroup);
+                if (article) {
+                    const lines = article.split('\r\n');
+                    for (const line of lines) {
+                        if (line.toLowerCase().startsWith(headerField.toLowerCase() + ':')) {
+                            const value = line.substring(line.indexOf(':') + 1).trim();
+                            conn.write(`${i} ${value}\r\n`);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    conn.write(".\r\n");
+    Log("XHDR command completed");
 }
 
 /**

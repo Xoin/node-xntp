@@ -54,6 +54,7 @@ var  code = {
     436:"436 transfer failed - try again later\r\n",
     437:"437 article rejected - do not try again.\r\n",
     440:"440 posting not allowed\r\n",
+    441:"441 posting failed\r\n",
 
     500:"500 command not recognized\r\n",
     501:"501 command syntax error\r\n",
