@@ -223,7 +223,7 @@ function Group(conn, sockets, params) {
 function DateCommand(conn) {
     var Log = LogCommands.extend('date');
     // Get current date and format as YYYYMMDDHHMMSS
-    var now = new global.Date();
+    var now = new Date();
     var dateStr = now.getUTCFullYear() + 
                   String(now.getUTCMonth() + 1).padStart(2, '0') +
                   String(now.getUTCDate()).padStart(2, '0') +
